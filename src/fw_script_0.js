@@ -1,5 +1,4 @@
-
-	// ============================================================================
+// ============================================================================
 	// FILTER CONFIGURATION - Customize this section for your environment
 	// ============================================================================
 	// %%FWV7_CONFIG_BEGIN%%
@@ -337,35 +336,10 @@ const DEFAULT_FILTER_CONFIG = {
 		}
 	};
 
-	// Bounded concurrency for parallel page fetches (avoids unbounded Promise.all stampede / 429s).
-	var DEVICE_FETCH_CONCURRENCY = 3;
-
-	async function mapPool(items, limit, worker)
-	{
-		var results = new Array(items.length);
-		var next = 0;
-		var n = Math.min(limit, Math.max(1, items.length));
-		var workers = [];
-		for (var w = 0; w < n; w++)
-		{
-			workers.push((async function()
-			{
-				while (true)
-				{
-					var i = next++;
-					if (i >= items.length) return;
-					results[i] = await worker(items[i], i);
-				}
-			})());
-		}
-		await Promise.all(workers);
-		return results;
-	}
-
 	// Warm the shared device cache: fetch ALL devices with no filter.
 	// Called once at startup before any filter loads. All filters then
 	// extract values client-side from this cache (zero additional API calls).
-	// Uses BOUNDED parallel fetch (CONCURRENCY pages at once) — fast without overwhelming LM API.
+	// Uses PARALLEL fetch (all pages at once) — tested at 5.2s vs 46s sequential (8.9x speedup).
 	async function warmDeviceCache()
 	{
 		if (sharedDeviceCache.complete && sharedDeviceCache.devices.length > 0) return; // already warmed
@@ -388,19 +362,20 @@ const DEFAULT_FILTER_CONFIG = {
 		var apiTotal = (firstData && typeof firstData.total === 'number') ? firstData.total : 0;
 		sharedDeviceCache.total = apiTotal;
 		var totalPages = Math.ceil(apiTotal / pageSize);
-		console.warn('[FilterWidget] warmDeviceCache: page 1 → ' + firstItems.length + ' items, total=' + apiTotal + ', pages=' + totalPages + ', concurrency=' + DEVICE_FETCH_CONCURRENCY);
+		console.warn('[FilterWidget] warmDeviceCache: page 1 → ' + firstItems.length + ' items, total=' + apiTotal + ', pages=' + totalPages);
 		if (firstItems.length === 0) return;
 		for (var i = 0; i < firstItems.length; i++) sharedDeviceCache.devices.push(firstItems[i]);
 
-		// Step 2: Fetch remaining pages with bounded concurrency
+		// Step 2: Fire ALL remaining pages in parallel
 		if (totalPages > 1 && firstItems.length >= pageSize)
 		{
-			var offsets = [];
-			for (var pg = 1; pg < totalPages; pg++) offsets.push(pg * pageSize);
-			var results = await mapPool(offsets, DEVICE_FETCH_CONCURRENCY, async function(offset)
+			var promises = [];
+			for (var pg = 1; pg < totalPages; pg++)
 			{
-				return LogicMonitorClient('/device/devices', baseParams + '&offset=' + offset, 'GET');
-			});
+				promises.push(LogicMonitorClient('/device/devices', baseParams + '&offset=' + (pg * pageSize), 'GET'));
+			}
+			var results = await Promise.all(promises);
+				// Collect all items (order preserved by Promise.all)
 			for (var ri = 0; ri < results.length; ri++)
 			{
 				var pageItems = (results[ri] && results[ri].items) ? results[ri].items : [];
@@ -411,7 +386,7 @@ const DEFAULT_FILTER_CONFIG = {
 		sharedDeviceCache.complete = true;
 		sharedDeviceCache.filterKey = 'all-devices-no-filter';
 		var _warmElapsed = Date.now() - _warmStart;
-		console.warn('[FilterWidget] warmDeviceCache: DONE — cached ' + sharedDeviceCache.devices.length + '/' + apiTotal + ' devices in ' + _warmElapsed + 'ms (bounded parallel)');
+		console.warn('[FilterWidget] warmDeviceCache: DONE — cached ' + sharedDeviceCache.devices.length + '/' + apiTotal + ' devices in ' + _warmElapsed + 'ms (parallel)');
 			// Enable the config button and hide loading banner now that the cache is ready
 		var _cfgBtn = document.getElementById('settingsMenuBtn');
 		if (_cfgBtn) _cfgBtn.disabled = false;
@@ -422,15 +397,6 @@ const DEFAULT_FILTER_CONFIG = {
 			_banner.style.display = 'none';
 			_banner.innerHTML = '';
 		}
-		// Share a slim copy with Severity widget via sessionStorage (same portal origin)
-		try
-		{
-			sessionStorage.setItem('lmDashDeviceCache_v1', JSON.stringify({
-				ts: Date.now(),
-				devices: sharedDeviceCache.devices
-			}));
-		}
-		catch (e) { /* quota */ }
 	}
 
 	// ============================================================================
@@ -3707,4 +3673,3 @@ function escapeH(str) {
 
 	document.getElementById('closeBtn').addEventListener('click', hideErrorMessage);
 	initialize();
-
