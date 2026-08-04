@@ -1,0 +1,1 @@
+document.write('<script src="https://cdn.jsdelivr.net/gh/logicmonitor/custom_widgets@main/src/Better_Map_Widget.js?ts=' + Date.now() + '" defer><\/script>');

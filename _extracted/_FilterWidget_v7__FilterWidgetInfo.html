@@ -1,0 +1,507 @@
+<!-- FilterWidget v7 User Guide - Place in a LogicMonitor Text Widget --><p><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet"></p><style>
+	/* ===== Base & Container ===== */
+	
+	.guide-container {
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; max-width: 100%; padding: 0; background: #f0f2f5; border-radius: 12px; color: #333; overflow: hidden; line-height: 1.55;
+	}
+	/* ===== Hero Header ===== */
+	
+	.guide-header {
+		background: linear-gradient(135deg, #031e2f 0%, #0a3a5c 60%, #0d4a70 100%); color: white; text-align: center; padding: 36px 24px 32px; position: relative; overflow: hidden;
+	}
+	
+	.guide-header::after {
+		content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #007bff, #ec7024, #28a745, #007bff); background-size: 300% 100%; animation: gradientSlide 6s ease infinite;
+	}
+	
+	@keyframes gradientSlide {
+		0% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
+		100% {
+			background-position: 0% 50%;
+		}
+	}
+	
+	.guide-header h1 {
+		color: white; font-size: 30px; margin: 0 0 8px 0; display: flex; align-items: center; justify-content: center; gap: 12px; font-weight: 700; letter-spacing: -0.3px;
+	}
+	
+	.guide-header h1 i {
+		font-size: 32px; opacity: 0.9;
+	}
+	
+	.guide-header .subtitle {
+		color: rgba(255, 255, 255, 0.75); font-size: 15px; margin: 0 0 14px 0; font-weight: 400; letter-spacing: 0.3px;
+	}
+	
+	.guide-header .version-badge {
+		display: inline-block; background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 5px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+	}
+	/* ===== Content Area ===== */
+	
+	.guide-body {
+		padding: 20px;
+	}
+	/* ===== Sections ===== */
+	
+	.guide-section {
+		background: white; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); overflow: hidden; border: 1px solid rgba(0, 0, 0, 0.04); transition: box-shadow 0.3s ease;
+	}
+	
+	.guide-section:hover {
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+	}
+	
+	.section-header {
+		background: linear-gradient(135deg, #031e2f 0%, #0a3550 100%); color: white; padding: 16px 20px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; transition: all 0.25s ease; border-left: 4px solid #007bff;
+	}
+	
+	.section-header:hover {
+		background: linear-gradient(135deg, #0a2d42 0%, #0d4060 100%); border-left-color: #ec7024;
+	}
+	
+	.section-header h2 {
+		margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; letter-spacing: 0.2px;
+	}
+	
+	.section-header .icon {
+		font-size: 18px; opacity: 0.85;
+	}
+	
+	.section-chevron {
+		transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1); font-size: 14px; opacity: 0.7;
+	}
+	
+	.section-chevron.open {
+		transform: rotate(180deg); opacity: 1;
+	}
+	
+	.section-content {
+		padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s ease;
+	}
+	
+	.section-content.open {
+		padding: 22px 24px; max-height: 5000px;
+	}
+	
+	.section-content h3 {
+		font-size: 16px; font-weight: 700; color: #031e2f; margin: 22px 0 12px 0; padding-bottom: 6px; border-bottom: 2px solid #e9ecef; letter-spacing: -0.2px;
+	}
+	
+	.section-content h3:first-child {
+		margin-top: 0;
+	}
+	
+	.section-content h4 {
+		font-size: 14px; font-weight: 700; color: #1a3a50; margin: 16px 0 8px 0;
+	}
+	
+	.section-content p {
+		margin: 0 0 12px 0; color: #444; font-size: 14px; line-height: 1.65;
+	}
+	
+	.section-content ul,
+	.section-content ol {
+		margin: 8px 0 12px 0; padding-left: 20px; color: #444; font-size: 14px;
+	}
+	
+	.section-content li {
+		margin-bottom: 6px; line-height: 1.6;
+	}
+	/* ===== Table of Contents ===== */
+	
+	.toc-list {
+		display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 10px 0;
+	}
+	
+	.toc-item {
+		background: linear-gradient(135deg, #e8f4fd 0%, #dbeafe 100%); padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #0d5ea3; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.25s ease; border: 1px solid rgba(13, 94, 163, 0.1);
+	}
+	
+	.toc-item:hover {
+		background: linear-gradient(135deg, #d0e8fa 0%, #b8d4f0 100%); transform: translateX(4px); box-shadow: 0 3px 10px rgba(0, 123, 255, 0.15); border-color: rgba(13, 94, 163, 0.2);
+	}
+	
+	.toc-item i {
+		font-size: 16px; opacity: 0.8;
+	}
+	/* ===== Feature Cards ===== */
+	
+	.feature-grid {
+		display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 18px 0;
+	}
+	
+	.feature-card {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 22px 16px; border-radius: 14px; text-align: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;
+	}
+	
+	.feature-card::before {
+		content: ''; position: absolute; top: -20px; right: -20px; width: 70px; height: 70px; background: rgba(255, 255, 255, 0.1); border-radius: 50%;
+	}
+	
+	.feature-card:hover {
+		transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+	}
+	
+	.feature-card.blue {
+		background: linear-gradient(135deg, #007bff 0%, #004db3 100%);
+	}
+	
+	.feature-card.green {
+		background: linear-gradient(135deg, #28a745 0%, #1a7a32 100%);
+	}
+	
+	.feature-card.orange {
+		background: linear-gradient(135deg, #ec7024 0%, #c05218 100%);
+	}
+	
+	.feature-card.navy {
+		background: linear-gradient(135deg, #031e2f 0%, #0d4a70 100%);
+	}
+	
+	.feature-card.teal {
+		background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+	}
+	
+	.feature-card.red {
+		background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
+	}
+	
+	.feature-card.purple {
+		background: linear-gradient(135deg, #6f42c1 0%, #4a2c8a 100%);
+	}
+	
+	.feature-card .feature-icon {
+		font-size: 32px; margin-bottom: 10px; position: relative; z-index: 1;
+	}
+	
+	.feature-card h4 {
+		margin: 0 0 5px 0; font-size: 15px; font-weight: 700; color: white; position: relative; z-index: 1;
+	}
+	
+	.feature-card p {
+		margin: 0; font-size: 12px; opacity: 0.9; line-height: 1.4; color: white; position: relative; z-index: 1;
+	}
+	/* ===== Info Cards ===== */
+	
+	.info-card {
+		background: #f0f7ff; border-left: 4px solid #007bff; padding: 14px 18px; margin: 14px 0; border-radius: 0 10px 10px 0; font-size: 14px; line-height: 1.6; color: #444;
+	}
+	
+	.info-card.tip {
+		border-left-color: #28a745; background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+	}
+	
+	.info-card.warning {
+		border-left-color: #ec7024; background: linear-gradient(135deg, #fff3e0 0%, #fff8e1 100%);
+	}
+	
+	.info-card.important {
+		border-left-color: #dc3545; background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%);
+	}
+	
+	.info-card-title {
+		font-weight: 700; margin-bottom: 5px; display: flex; align-items: center; gap: 7px; color: #333; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+	}
+	/* ===== Step Lists ===== */
+	
+	.step-list {
+		counter-reset: step-counter; list-style: none; padding: 0; margin: 15px 0;
+	}
+	
+	.step-list li {
+		counter-increment: step-counter; position: relative; padding: 14px 18px 14px 58px; margin-bottom: 10px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border-radius: 10px; border: 1px solid #e5e8eb; font-size: 14px; transition: all 0.2s ease;
+	}
+	
+	.step-list li:hover {
+		border-color: #c5d0da; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+	}
+	
+	.step-list li::before {
+		content: counter(step-counter); position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; background: linear-gradient(135deg, #007bff, #0056b3); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; box-shadow: 0 2px 6px rgba(0, 123, 255, 0.35);
+	}
+	/* ===== Tables ===== */
+	
+	.table-wrapper {
+		border-radius: 10px; overflow: hidden; margin: 15px 0; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06); border: 1px solid #e5e8eb;
+	}
+	
+	.field-table {
+		width: 100%; border-collapse: collapse; font-size: 13px;
+	}
+	
+	.field-table th {
+		background: linear-gradient(135deg, #031e2f 0%, #0a3550 100%); color: white; padding: 12px 14px; text-align: left; font-weight: 600; font-size: 12px; letter-spacing: 0.4px; text-transform: uppercase;
+	}
+	
+	.field-table td {
+		padding: 11px 14px; border-bottom: 1px solid #eef0f2; vertical-align: top; color: #444;
+	}
+	
+	.field-table tr:nth-child(even) {
+		background: #fafbfc;
+	}
+	
+	.field-table tr:hover {
+		background: #eef5fd;
+	}
+	/* ===== Code ===== */
+	
+	.code-inline {
+		background: #eef1f5; padding: 2px 7px; border-radius: 5px; font-family: 'SFMono-Regular', 'Monaco', 'Consolas', monospace; font-size: 12px; color: #c7254e; border: 1px solid #dde1e6;
+	}
+	
+	.code-block {
+		background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #e2e8f0; padding: 18px; border-radius: 10px; font-family: 'SFMono-Regular', 'Monaco', 'Consolas', monospace; font-size: 12px; overflow-x: auto; margin: 14px 0; line-height: 1.6; border: 1px solid #334155;
+	}
+	
+	.code-block .comment {
+		color: #68d391;
+	}
+	
+	.code-block .string {
+		color: #fbd38d;
+	}
+	
+	.code-block .keyword {
+		color: #90cdf4;
+	}
+	
+	.code-block .prop {
+		color: #c4b5fd;
+	}
+	/* ===== Button Demos ===== */
+	
+	.button-demo {
+		display: inline-flex; align-items: center; gap: 5px; padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; border: none; margin: 2px; letter-spacing: 0.2px; white-space: nowrap;
+	}
+	
+	.button-demo.blue {
+		background: #007bff; color: white;
+	}
+	
+	.button-demo.orange {
+		background: #ec7024; color: white;
+	}
+	
+	.button-demo.green {
+		background: #28a745; color: white;
+	}
+	
+	.button-demo.gray {
+		background: #6c757d; color: white;
+	}
+	
+	.button-demo.dark {
+		background: #343a40; color: white;
+	}
+	
+	.button-demo.navy {
+		background: #031e2f; color: white;
+	}
+	
+	.button-demo.red {
+		background: #dc3545; color: white;
+	}
+	/* ===== Workflow Diagram ===== */
+	
+	.workflow-diagram {
+		display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; padding: 24px 16px; background: linear-gradient(135deg, #f0f7ff 0%, #f8f9fa 100%); border-radius: 12px; margin: 15px 0; border: 1px solid #dbeafe;
+	}
+	
+	.workflow-step {
+		background: white; border: 2px solid #007bff; border-radius: 12px; padding: 14px 20px; text-align: center; min-width: 110px; transition: all 0.25s ease; box-shadow: 0 2px 8px rgba(0, 123, 255, 0.08);
+	}
+	
+	.workflow-step:hover {
+		transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0, 123, 255, 0.18);
+	}
+	
+	.workflow-step .step-num {
+		background: linear-gradient(135deg, #007bff, #0056b3); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin: 0 auto 8px auto; box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
+	}
+	
+	.workflow-step .step-label {
+		font-size: 13px; font-weight: 700; color: #031e2f;
+	}
+	
+	.workflow-step .step-desc {
+		font-size: 11px; color: #6c757d; margin-top: 3px;
+	}
+	
+	.workflow-arrow {
+		color: #007bff; font-size: 22px; opacity: 0.6;
+	}
+	/* ===== Sub-Accordions ===== */
+	
+	.accordion-sub {
+		margin: 12px 0; border: 1px solid #e5e8eb; border-radius: 10px; overflow: hidden; transition: box-shadow 0.2s ease;
+	}
+	
+	.accordion-sub:hover {
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+	}
+	
+	.accordion-sub-header {
+		background: linear-gradient(135deg, #f0f2f5 0%, #e9ecef 100%); padding: 12px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 14px; color: #031e2f; transition: background 0.2s ease;
+	}
+	
+	.accordion-sub-header:hover {
+		background: linear-gradient(135deg, #e3e7ec 0%, #dde1e6 100%);
+	}
+	
+	.accordion-sub-header span {
+		display: flex; align-items: center; gap: 8px;
+	}
+	
+	.accordion-sub-content {
+		padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
+	}
+	
+	.accordion-sub-content.open {
+		padding: 16px 18px; max-height: 3000px;
+	}
+	/* ===== FAQ Items ===== */
+	
+	.faq-item {
+		margin-bottom: 12px; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; transition: box-shadow 0.2s ease;
+	}
+	
+	.faq-item:hover {
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+	}
+	
+	.faq-question {
+		background: linear-gradient(135deg, #e8f4fd 0%, #dbeafe 100%); padding: 13px 16px; font-weight: 600; color: #0d5ea3; display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; transition: background 0.2s ease;
+	}
+	
+	.faq-question:hover {
+		background: linear-gradient(135deg, #d0e8fa 0%, #c5dbf2 100%);
+	}
+	
+	.faq-question i {
+		font-size: 16px; opacity: 0.7;
+	}
+	
+	.faq-answer {
+		padding: 14px 18px 14px 42px; color: #555; line-height: 1.65; font-size: 14px; background: white;
+	}
+	/* ===== Wizard Flow Visual ===== */
+	
+	.wizard-flow {
+		display: flex; align-items: stretch; gap: 0; margin: 18px 0; border-radius: 12px; overflow: hidden; border: 1px solid #e5e8eb;
+	}
+	
+	.wizard-flow-step {
+		flex: 1; padding: 18px 14px; text-align: center; position: relative; background: white; border-right: 1px solid #e5e8eb;
+	}
+	
+	.wizard-flow-step:last-child {
+		border-right: none;
+	}
+	
+	.wizard-flow-step .wf-num {
+		background: linear-gradient(135deg, #007bff, #0056b3); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin: 0 auto 10px; box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
+	}
+	
+	.wizard-flow-step .wf-title {
+		font-size: 13px; font-weight: 700; color: #031e2f; margin-bottom: 4px;
+	}
+	
+	.wizard-flow-step .wf-desc {
+		font-size: 11px; color: #6c757d; line-height: 1.4;
+	}
+	
+	.wizard-flow-step.active {
+		background: linear-gradient(135deg, #e8f4fd 0%, #f0f7ff 100%);
+	}
+	/* ===== Pattern Examples ===== */
+	
+	.pattern-examples {
+		display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 14px 0;
+	}
+	
+	.pattern-card {
+		background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border: 1px solid #e5e8eb; border-radius: 10px; padding: 14px; transition: all 0.2s ease;
+	}
+	
+	.pattern-card:hover {
+		border-color: #c5d0da; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+	}
+	
+	.pattern-card .pattern-label {
+		font-size: 12px; font-weight: 700; color: #031e2f; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px;
+	}
+	
+	.pattern-card .pattern-code {
+		font-family: 'SFMono-Regular', 'Monaco', 'Consolas', monospace; font-size: 13px; color: #c7254e; background: #eef1f5; padding: 4px 8px; border-radius: 5px; display: inline-block; margin-bottom: 6px; border: 1px solid #dde1e6;
+	}
+	
+	.pattern-card .pattern-desc {
+		font-size: 12px; color: #6c757d; line-height: 1.4;
+	}
+	/* ===== New in v7 badge ===== */
+	
+	.new-badge {
+		display: inline-block; background: linear-gradient(135deg, #28a745, #1a7a32); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle; margin-left: 6px;
+	}
+	
+	.hidden-badge {
+		display: inline-block; background: #ec7024; color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; letter-spacing: 0.3px; vertical-align: middle; margin-left: 4px;
+	}
+	
+	.exclude-badge {
+		display: inline-block; background: #dc3545; color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; letter-spacing: 0.3px; vertical-align: middle; margin-left: 4px;
+	}
+	/* ===== Footer ===== */
+	
+	.guide-footer {
+		background: linear-gradient(135deg, #031e2f 0%, #0a3a5c 100%); color: rgba(255, 255, 255, 0.6); text-align: center; padding: 16px 24px; font-size: 12px; letter-spacing: 0.3px;
+	}
+	
+	.guide-footer strong {
+		color: rgba(255, 255, 255, 0.85);
+	}
+
+</style><div class="guide-container"><!-- Hero Header --><div class="guide-header"><h1><i class="bi bi-filter-square-fill"></i> FilterWidget v7 User Guide</h1><p class="subtitle">Hidden Filters &bull; Exclude Mode &bull; Preselected Values &bull; Self-Updating Config &bull; Up to 15 Filters</p><span class="version-badge">v7 &mdash; Current</span></div><div class="guide-body"><!-- Table of Contents --><div class="guide-section"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-grid-3x2-gap icon"></i> Quick Navigation</h2><i class="bi bi-chevron-down section-chevron open"></i></div><div class="section-content open"><div class="toc-list"><div class="toc-item" onclick="openSection('getting-started')"><i class="bi bi-rocket-takeoff"></i> Getting Started</div><div class="toc-item" onclick="openSection('using-filters')"><i class="bi bi-funnel"></i> Using Filters</div><div class="toc-item" onclick="openSection('hidden-filters')"><i class="bi bi-eye-slash"></i> Hidden Filters</div><div class="toc-item" onclick="openSection('exclude-mode')"><i class="bi bi-slash-circle"></i> Exclude Mode</div><div class="toc-item" onclick="openSection('preselected')"><i class="bi bi-check2-square"></i> Preselected Values</div><div class="toc-item" onclick="openSection('url-filtering')"><i class="bi bi-link-45deg"></i> URL-Based Filtering</div><div class="toc-item" onclick="openSection('presets')"><i class="bi bi-bookmark-star"></i> Filter Presets</div><div class="toc-item" onclick="openSection('configuration')"><i class="bi bi-magic"></i> Wizard Configuration</div><div class="toc-item" onclick="openSection('self-update')"><i class="bi bi-arrow-repeat"></i> Self-Updating Config</div><div class="toc-item" onclick="openSection('field-reference')"><i class="bi bi-card-list"></i> Field Reference</div><div class="toc-item" onclick="openSection('troubleshooting')"><i class="bi bi-wrench-adjustable"></i> Troubleshooting</div></div></div></div><!-- Getting Started --><div class="guide-section" id="getting-started"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-rocket-takeoff icon"></i> Getting Started</h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><p>FilterWidget v7 is a <strong>zero-config dashboard controller</strong> for LogicMonitor. It drives cascading filter dropdowns that update your entire dashboard via LM&#39;s native URL-based resource property filters. All devices are fetched into a local cache at startup, and filter options are extracted client-side for instant cascading.</p><div class="feature-grid"><div class="feature-card green"><div class="feature-icon"><i class="bi bi-ui-checks"></i></div><h4>Multi-Select</h4><p>Select multiple values per filter with tag chips &amp; checkmarks</p></div><div class="feature-card blue"><div class="feature-icon"><i class="bi bi-magic"></i></div><h4>Wizard Config</h4><p>Step-by-step setup with live preview, up to 15 filters</p></div><div class="feature-card orange"><div class="feature-icon"><i class="bi bi-eye"></i></div><h4>Conditional Visibility</h4><p>Show/hide filters based on upstream selections</p></div><div class="feature-card navy"><div class="feature-icon"><i class="bi bi-eye-slash"></i></div><h4>Hidden Filters</h4><p>Silent filters that apply to the URL without showing a dropdown</p></div><div class="feature-card red"><div class="feature-icon"><i class="bi bi-slash-circle"></i></div><h4>Exclude Mode</h4><p>Filters can hide matching resources instead of showing them</p></div><div class="feature-card purple"><div class="feature-icon"><i class="bi bi-check2-square"></i></div><h4>Preselected Values</h4><p>Auto-select default values on first load or restrict hidden filters</p></div><div class="feature-card teal"><div class="feature-icon"><i class="bi bi-arrow-repeat"></i></div><h4>Self-Updating Config</h4><p>Wizard writes the new config back into the widget&#39;s source HTML</p></div><div class="feature-card navy"><div class="feature-icon"><i class="bi bi-link-45deg"></i></div><h4>URL Filtering</h4><p>Shareable filtered dashboard URLs, all state in the link</p></div><div class="feature-card blue"><div class="feature-icon"><i class="bi bi-lightning-charge"></i></div><h4>Device Cache</h4><p>All devices cached at startup, instant client-side extraction</p></div><div class="feature-card green"><div class="feature-icon"><i class="bi bi-bookmark-check"></i></div><h4>Presets</h4><p>Save &amp; load filter combinations, import/export JSON</p></div></div><div class="info-card tip"><div class="info-card-title"><i class="bi bi-lightning-charge"></i> Two-Phase Initialization</div>Filter values and the blue status strip restore <strong>instantly</strong> from URL parameters or localStorage. The device cache loads in the background (a few seconds) to refresh dropdown options. You can use your restored filters immediately without waiting.</div><h3>Basic Workflow</h3><div class="workflow-diagram"><div class="workflow-step"><div class="step-num">1</div><div class="step-label">Select Filters</div><div class="step-desc">Choose values left-to-right</div></div><div class="workflow-arrow"><i class="bi bi-arrow-right"></i></div><div class="workflow-step"><div class="step-num">2</div><div class="step-label">Click Apply</div><div class="step-desc">Builds filtered URL</div></div><div class="workflow-arrow"><i class="bi bi-arrow-right"></i></div><div class="workflow-step"><div class="step-num">3</div><div class="step-label">Dashboard Filters</div><div class="step-desc">All widgets update</div></div><div class="workflow-arrow"><i class="bi bi-arrow-right"></i></div><div class="workflow-step"><div class="step-num">4</div><div class="step-label">Share URL</div><div class="step-desc">Link preserves filter state</div></div></div><div class="info-card"><div class="info-card-title"><i class="bi bi-info-circle"></i> No Dashboard Tokens Required</div>FilterWidget v7 is zero-config. It uses LogicMonitor&#39;s native URL-based resource property filter mechanism &mdash; no dashboard tokens needed. Hidden filters add values to the URL automatically without any visible dropdown.</div></div></div><!-- Using Filters --><div class="guide-section" id="using-filters"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-funnel icon"></i> Using Filters</h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><h3>Multi-Select Dropdowns</h3><p>Filter dropdowns support <strong>multi-select</strong> by default. You can select one or more values per filter, and all selected values are included in the dashboard URL. Individual filters can be configured as <strong>single-select</strong> in the wizard.</p><ol class="step-list"><li><strong>Click on a filter input</strong> to open the searchable dropdown. A <strong>✓ checkmark</strong> appears next to each selected option.</li><li><strong>Type to search</strong> &mdash; the list filters in real-time as you type. The dropdown stays open so you can select multiple items.</li><li><strong>Click options to toggle</strong> them on or off. The dropdown does <em>not</em> close after each click.</li><li><strong>Selected values appear as tag chips</strong> below the input. Each tag has an <strong>&times;</strong> button to remove it individually.</li><li>When multiple values are selected, the input field shows <strong>&quot;N selected&quot;</strong> (e.g., &quot;3 selected&quot;).</li><li><strong>Click outside</strong> the dropdown to close it, then <strong>click Apply</strong> to filter the dashboard.</li></ol><div class="info-card"><div class="info-card-title"><i class="bi bi-info-circle"></i> About &quot;All&quot; Option</div>Selecting <strong>&quot;All&quot;</strong> clears any other selected values for that filter (they are mutually exclusive). Similarly, selecting a specific value removes &quot;All&quot; from the selection. In the URL, &quot;All&quot; means no filtering for that property.</div><h3>Action Buttons</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th style="width: 120px;">Button</th><th>Description</th></tr></thead><tbody><tr><td><span class="button-demo blue">Apply</span></td><td>Constructs a URL with your filter selections as LM resource property filters. All visible filters (including hidden ones running in the background) contribute to the URL. The page reloads and all widgets filter to matching resources.</td></tr><tr><td><span class="button-demo orange">Reset</span></td><td>Clears all current filter selections and reloads the first filter from the device cache.</td></tr></tbody></table></div><h3>How Cascading Works</h3><p>Filters extract values <strong>client-side</strong> from a shared device cache. When you select or deselect a value:</p><ul><li>The widget narrows the device pool using <strong>OR logic</strong> across all selected values &mdash; a device matches if it matches <em>any</em> selected value</li><li>All <strong>downstream filters</strong> recalculate their options from the narrowed pool</li><li>Previously selected downstream values that are <strong>no longer valid</strong> are automatically <strong>pruned</strong></li><li>Valid downstream selections are <strong>preserved</strong></li><li><strong>Hidden filters</strong> are included in the cascade but do not show a dropdown; they auto-select their values silently</li></ul><div class="info-card warning"><div class="info-card-title"><i class="bi bi-exclamation-triangle"></i> No Options?</div>If a filter shows no options, the combined selections in upstream filters may have narrowed the device pool to zero matching devices. Try deselecting some values or selecting &quot;All&quot; in an upstream filter to widen the pool.</div></div></div><!-- Hidden Filters (NEW in v7) --><div class="guide-section" id="hidden-filters"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-eye-slash icon"></i> Hidden Filters&nbsp;<span class="new-badge">New in v7</span></h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><p>A <strong>hidden filter</strong> has <code class="code-inline">hidden: true</code> set in its configuration. It participates fully in the dashboard URL and the cascading logic, but it <em>never renders a dropdown</em> in the filter bar and never appears in the blue status strip.</p><h3>What Hidden Filters Do</h3><ul><li>Their selected values are <strong>always included</strong> in the URL built by Apply &mdash; silently restricting the dashboard</li><li>They <strong>auto-select all available options</strong> (excluding &quot;All&quot;) after their data loads</li><li>If <code class="code-inline">preselectedValues</code> is configured, only those specific values are auto-selected instead of all</li><li>They still respect <code class="code-inline">visibleWhen</code> &mdash; a hidden filter only activates when its upstream condition is met</li><li>Works with both <code class="code-inline">source: &quot;api&quot;</code> (device property extraction) and <code class="code-inline">source: &quot;static&quot;</code> (custom list)</li></ul><h3>Common Use Cases</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th>Use Case</th><th>How</th></tr></thead><tbody><tr><td><strong>Always exclude a resource type</strong></td><td>Hidden filter on <code class="code-inline">system.azure.tag.aztype</code> with <code class="code-inline">preselectedValues: [&quot;VM&quot;]</code> and <code class="code-inline">filterMode: &quot;exclude&quot;</code> &mdash; silently hides all VMs</td></tr><tr><td><strong>Restrict to a subtree</strong></td><td>Hidden filter on <code class="code-inline">system.groups</code> that auto-selects all groups under a given path, narrowing the dashboard without exposing the filter</td></tr><tr><td><strong>Single-value silent filter</strong></td><td>Hidden filter with <code class="code-inline">preselectedValues: [&quot;Production&quot;]</code> that always passes <code class="code-inline">environment=Production</code> into the URL</td></tr></tbody></table></div><h3>How to Configure a Hidden Filter</h3><ol class="step-list"><li>Open the wizard via <strong>▶ Filter Configuration &rarr; Edit Configuration</strong></li><li>Navigate to the filter&#39;s step and go to the <strong>Display Options</strong> section</li><li>Toggle <strong>&quot;Hide from filter bar&quot;</strong> to on</li><li>Optionally set <strong>Preselected Values</strong> to restrict which values are auto-selected</li><li>On the Review step, hidden filters show an orange <span class="hidden-badge">(hidden)</span> badge and appear dimmed in the preview mockup</li><li>Save the configuration &mdash; the hidden filter will take effect immediately</li></ol><div class="info-card tip"><div class="info-card-title"><i class="bi bi-lightbulb"></i> Hidden vs. Visible in the Code</div>Internally, <code class="code-inline">getVisibleFilters()</code> includes hidden filters (for URL building and cascade), while <code class="code-inline">getDisplayedFilters()</code> excludes them (for rendering the filter bar and the blue status strip). Hidden filters are always &quot;active&quot; but never shown.</div><div class="info-card warning"><div class="info-card-title"><i class="bi bi-exclamation-triangle"></i> Dashboard Appears Empty?</div>If the dashboard shows no resources after clicking Apply, a hidden filter with no matching values may be over-restricting. Check your hidden filter configuration and ensure the <code class="code-inline">preselectedValues</code> or auto-selected values actually match devices in your environment.</div></div></div><!-- Exclude Mode (NEW in v7) --><div class="guide-section" id="exclude-mode"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-slash-circle icon"></i> Exclude Mode&nbsp;<span class="new-badge">New in v7</span></h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><p>By default, filters use <strong>include mode</strong> &mdash; the dashboard shows only resources that match the selected values. With <strong>exclude mode</strong>, the dashboard <em>hides</em> resources that match the selected values, showing everything else.</p><h3>How Exclude Mode Works</h3><p>When <code class="code-inline">filterMode: &quot;exclude&quot;</code> is set on a filter:</p><ul><li>The URL filter entry gets <code class="code-inline">&quot;i&quot;: &quot;e&quot;</code> added, which is LogicMonitor&#39;s native exclude flag</li><li>The value entries omit <code class="code-inline">isSelected</code>, matching LM&#39;s native exclude format</li><li>The filter label shows a <span class="exclude-badge">Exclude</span> badge</li><li>The blue status strip prefixes the filter name with &quot;Exclude&quot;</li><li>The wizard review step shows the filter with a red &quot;Mode: Exclude&quot; indicator</li></ul><h3>Use Cases</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th>Scenario</th><th>Config</th></tr></thead><tbody><tr><td><strong>Hide specific resource types</strong></td><td>Hidden filter + exclude mode &rarr; silently removes matching resources from all dashboard widgets</td></tr><tr><td><strong>Remove maintenance hosts</strong></td><td>Visible filter on a maintenance property, exclude mode lets users pick which hosts to suppress</td></tr><tr><td><strong>Exclude a department from view</strong></td><td>Hidden exclude filter on <code class="code-inline">customer.squad</code> to prevent a specific squad from appearing in shared dashboards</td></tr></tbody></table></div><h3>Configuring Exclude Mode</h3><ol class="step-list"><li>Open the wizard and navigate to the filter&#39;s <strong>Display Options</strong> section</li><li>Toggle <strong>&quot;Exclude Selections&quot;</strong> to on</li><li>The Review step will show a red &quot;Mode: Exclude&quot; indicator for that filter</li><li>Save the configuration</li></ol><div class="info-card"><div class="info-card-title"><i class="bi bi-info-circle"></i> URL Format Difference</div>Include mode:&nbsp;<code class="code-inline">{&quot;n&quot;:&quot;prop&quot;,&quot;v&quot;:[{&quot;value&quot;:&quot;X&quot;,&quot;label&quot;:&quot;X&quot;,&quot;isSelected&quot;:true}],&quot;t&quot;:&quot;RP&quot;}</code><br><br>Exclude mode: <code class="code-inline">{&quot;n&quot;:&quot;prop&quot;,&quot;v&quot;:[{&quot;value&quot;:&quot;X&quot;,&quot;label&quot;:&quot;X&quot;}],&quot;t&quot;:&quot;RP&quot;,&quot;i&quot;:&quot;e&quot;}</code></div></div></div><!-- Preselected Values (NEW in v7) --><div class="guide-section" id="preselected"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-check2-square icon"></i> Preselected Values&nbsp;<span class="new-badge">New in v7</span></h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><p>The <code class="code-inline">preselectedValues</code> property on a filter defines an array of values to auto-select. Its behavior differs depending on whether the filter is hidden or visible.</p><h3>For Hidden Filters</h3><ul><li>Without <code class="code-inline">preselectedValues</code>: the hidden filter auto-selects <strong>all available values</strong> (excluding &quot;All&quot;)</li><li>With <code class="code-inline">preselectedValues: [&quot;val1&quot;, &quot;val2&quot;]</code>: the hidden filter auto-selects <strong>only those specific values</strong>, restricting the URL filter to them</li></ul><h3>For Visible Filters</h3><ul><li>When no URL state or localStorage state exists for the filter, the widget auto-selects the preselected values as the <strong>default selection on first load</strong></li><li>Once the user changes the selection and clicks Apply, that user selection takes over and the preset defaults no longer override</li><li>On Reset, the filter clears completely (preselected defaults are not re-applied &mdash; only on true first load with no existing state)</li></ul><h3>Configuring Preselected Values</h3><ol class="step-list"><li>Open the wizard and navigate to the filter&#39;s <strong>Display Options</strong> section</li><li>Find the <strong>Preselected values</strong> picker &mdash; it shows checkboxes for all available values loaded from the device cache (API source) or the static options list</li><li>Check the values you want preselected, or use <strong>Select All</strong> / <strong>Clear All</strong> buttons</li><li>Save the configuration</li></ol><div class="info-card tip"><div class="info-card-title"><i class="bi bi-lightbulb"></i> Backward Compatible</div>Filters without <code class="code-inline">preselectedValues</code> behave exactly as before. For hidden filters, omitting it means all values are auto-selected (the original v7 hidden filter behavior). For visible filters, omitting it means no default is applied.</div></div></div><!-- URL-Based Dashboard Filtering --><div class="guide-section" id="url-filtering"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-link-45deg icon"></i> URL-Based Dashboard Filtering</h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><p>When you click <strong>Apply</strong>, FilterWidget v7 constructs a URL with a <code class="code-inline">filters</code> query parameter containing your selections as LM resource property filters. <strong>Both visible and hidden filters</strong> contribute to this URL.</p><h3>How It Works</h3><ol class="step-list"><li>Each filter&#39;s selected values (including auto-selected hidden filter values) are encoded as resource property filter entries in the URL</li><li>Filters with <strong>&quot;All&quot;</strong> selected produce an empty <code class="code-inline">v</code> array (no filtering for that property)</li><li>Exclude-mode filters add <code class="code-inline">&quot;i&quot;:&quot;e&quot;</code> to their URL entry</li><li>The page reloads with the filter URL and all dashboard widgets display matching resources</li><li>Anyone opening the same URL sees the same filtered view &mdash; <strong>URLs are shareable</strong></li></ol><h3>URL Match Patterns (Glob Patterns)</h3><p>Each filter can use a <strong>glob pattern</strong> to control how values are matched in the URL filter. The <code class="code-inline">${value}</code> placeholder is replaced with the user&#39;s selection.</p><div class="pattern-examples"><div class="pattern-card"><div class="pattern-label">Prefix Match (default)</div><div class="pattern-code">${value}*</div><div class="pattern-desc">Matches resources where the property starts with the selected value. Default if no pattern is specified.</div></div><div class="pattern-card"><div class="pattern-label">Exact Match</div><div class="pattern-code">${value}</div><div class="pattern-desc">Matches only resources where the property equals the selected value exactly.</div></div><div class="pattern-card"><div class="pattern-label">Contains Match</div><div class="pattern-code">*${value}*</div><div class="pattern-desc">Matches resources where the property contains the selected value anywhere.</div></div></div><div class="info-card tip"><div class="info-card-title"><i class="bi bi-lightbulb"></i> system.groups Handling</div>For filters using <code class="code-inline">system.groups</code>, values are automatically reconstructed into full group paths (e.g., <code class="code-inline">Customers_Azure/SQUAD_NA2/Baptist Health*</code>) based on the filter&#39;s glob pattern configuration.</div><h3>Filter State Priority</h3><p>When the widget loads, it restores filter state using this priority order:</p><div class="table-wrapper"><table class="field-table"><thead><tr><th style="width: 80px;">Priority</th><th style="width: 140px;">Source</th><th>Description</th></tr></thead><tbody><tr><td><strong>1</strong></td><td>URL parameters</td><td>Filters parsed from the current page URL. Highest priority &mdash; allows shareable links. Hidden filters read their values from the URL on load.</td></tr><tr><td><strong>2</strong></td><td>localStorage</td><td>Last-used filter selections saved in your browser.</td></tr><tr><td><strong>3</strong></td><td>Preselected defaults</td><td>Auto-selected values from <code class="code-inline">preselectedValues</code> config. Applied only when no URL or localStorage state exists.</td></tr><tr><td><strong>4</strong></td><td>Empty</td><td>No filters selected; visible dropdowns start empty.</td></tr></tbody></table></div></div></div><!-- Presets Section --><div class="guide-section" id="presets"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-bookmark-star icon"></i> Filter Presets</h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><p>Presets let you save and quickly restore filter combinations you use frequently. Click the <strong>&quot;▶ Filter Presets&quot;</strong> toggle in the button bar to expand the presets panel.</p><h3>Managing Presets</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th style="width: 140px;">Action</th><th>How To</th></tr></thead><tbody><tr><td><strong>Save a Preset</strong></td><td><ol style="margin: 0; padding-left: 18px;"><li>Select your desired filter values</li><li>Type a name in the &quot;Preset name...&quot; input</li><li>Click <span class="button-demo green">Save</span></li></ol></td></tr><tr><td><strong>Load a Preset</strong></td><td><ol style="margin: 0; padding-left: 18px;"><li>Select a preset from the dropdown</li><li>Click <span class="button-demo blue">Load</span></li><li>Click <span class="button-demo blue">Apply</span> to filter the dashboard</li></ol></td></tr><tr><td><strong>Delete a Preset</strong></td><td>Select the preset from the dropdown, then click <span class="button-demo orange">Delete</span></td></tr><tr><td><strong>Export Presets</strong></td><td>Click <span class="button-demo blue">Export</span> to download all presets as a JSON file</td></tr><tr><td><strong>Import Presets</strong></td><td>Click <span class="button-demo dark">Import</span> and select a previously exported JSON file</td></tr></tbody></table></div><h3>Additional Controls</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th style="width: 140px;">Button</th><th>Description</th></tr></thead><tbody><tr><td><span class="button-demo orange">Clear All</span></td><td>Deletes ALL saved data including presets, configuration, wizard state, and cache. <strong>Cannot be undone!</strong></td></tr><tr><td><span class="button-demo gray">Clear Cache</span></td><td>Clears the device/API response cache. Use if filter options seem stale. Fresh data is fetched on next page load.</td></tr></tbody></table></div><div class="info-card tip"><div class="info-card-title"><i class="bi bi-lightbulb"></i> Sharing Presets</div>Use Export/Import to share presets with teammates. Alternatively, share the dashboard URL after clicking Apply &mdash; the full filter state (including hidden filter values) is embedded in the link.</div></div></div><!-- Configuration (Wizard) --><div class="guide-section" id="configuration"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-magic icon"></i> Wizard Configuration</h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><p>FilterWidget v7 uses a <strong>step-by-step wizard</strong> for configuring filters. No raw JSON editing required. Access it via the <strong>&quot;▶ Filter Configuration&quot;</strong> menu in the top-right corner and selecting <strong>Edit Configuration</strong>. Supports up to <strong>15 filters</strong>.</p><div class="info-card warning"><div class="info-card-title"><i class="bi bi-hourglass-split"></i> Config Button Disabled?</div>The configuration button is disabled until the device cache finishes loading (a few seconds). A centered &quot;Loading device data...&quot; banner is shown while the cache loads. Wait for it to disappear before opening the wizard.</div><h3>Configuration Menu</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th style="width: 160px;">Menu Item</th><th>Description</th></tr></thead><tbody><tr><td><strong>Edit Configuration</strong></td><td>Opens the wizard popup where you can add, edit, reorder, or remove filters. On save, the new config is <strong>written back into the widget&#39;s HTML source</strong> automatically.</td></tr><tr><td><strong>Export Config</strong></td><td>Downloads your current configuration as a JSON file (backup or cross-environment transfer)</td></tr><tr><td><strong>Import Config</strong></td><td>Load a configuration from a previously exported JSON file</td></tr><tr><td><strong>Reset to embedded default&hellip;</strong></td><td>Restores the filter definitions from the default baked into this text widget (not your browser&#39;s cached copy). You&#39;ll be asked whether to download a JSON backup first, then to confirm. Use this after an admin updates the widget HTML, or if you only have a local saved config and want to match the script again. Named <strong>Filter Presets</strong> are kept.</td></tr><tr><td><strong>Clear API Cache</strong></td><td>Purges cached device data so fresh data is fetched on next load</td></tr></tbody></table></div><h3>Wizard Steps</h3><div class="wizard-flow"><div class="wizard-flow-step active"><div class="wf-num">1</div><div class="wf-title">Setup</div><div class="wf-desc">Choose filter count (1&ndash;15)</div></div><div class="wizard-flow-step"><div class="wf-num">2-N</div><div class="wf-title">Configure Each</div><div class="wf-desc">Label, source, visibility, display options</div></div><div class="wizard-flow-step"><div class="wf-num"><i class="bi bi-check-lg" style="font-size: 14px;"></i></div><div class="wf-title">Review</div><div class="wf-desc">Reorder, remove, preview &amp; save</div></div></div><div class="accordion-sub"><div class="accordion-sub-header" onclick="toggleSubSection(this)"><span><i class="bi bi-1-circle"></i> Step 1: Setup</span> <i class="bi bi-chevron-down section-chevron"></i></div><div class="accordion-sub-content"><p>Choose how many filter dropdowns you want (1&ndash;15). Each filter extracts unique values from a device property. Selecting a value in one filter narrows the devices available to subsequent filters. Filters can be conditionally visible and can be hidden from the filter bar entirely.</p><div class="info-card"><div class="info-card-title"><i class="bi bi-info-circle"></i> 15 Filter Maximum</div>v7 supports up to 15 filters (increased from 10 in v4/v5/v6). The maximum is controlled by the <code class="code-inline">MAX_FILTERS</code> constant in the widget script.</div></div></div><div class="accordion-sub"><div class="accordion-sub-header" onclick="toggleSubSection(this)"><span><i class="bi bi-2-circle"></i> Steps 2&ndash;N: Configure Each Filter</span> <i class="bi bi-chevron-down section-chevron"></i></div><div class="accordion-sub-content"><p>Each filter step has the following sections:</p><h4>Name Your Filter</h4><ul><li><strong>Filter Label</strong> &mdash; Display name shown above the dropdown</li><li><strong>Search Hint</strong> &mdash; Placeholder text in the input (e.g., &quot;Search Squad...&quot;)</li><li><strong>Internal ID</strong> &mdash; Auto-generated from the label, but manually editable. Manual edits are preserved through label/visibility changes.</li></ul><h4>Visibility (filters at position 2+)</h4><ul><li>Toggle <strong>&quot;Only show when an upstream filter matches specific values&quot;</strong> to make the filter conditionally visible</li><li>Select the upstream filter and the values that trigger visibility</li><li>If the upstream filter uses a custom list, checkboxes appear; if it uses API source, type values manually</li></ul><h4>Data Source</h4><ul><li><strong>LogicMonitor API</strong> &mdash; Extracts unique values from a device property across all cached devices</li><li><strong>Custom List</strong> &mdash; A static list of options you define (e.g., &quot;Azure Filter&quot;, &quot;QTS Filter&quot;)</li></ul><h4>Display Options <span class="new-badge">v7</span></h4><ul><li><strong>LM Filter Property Name</strong> &mdash; The device property matched in the dashboard URL</li><li><strong>Device Property to Extract From</strong> &mdash; Property scanned across cached devices (API source only)</li><li><strong>Value Extraction Preset</strong> &mdash; &quot;Use as-is&quot; or &quot;Split by character and pick a piece&quot;</li><li><strong>Include &quot;All&quot; Option</strong> &mdash; Whether to show an &quot;All&quot; at the top</li><li><strong>Allow Multiple Selections</strong> &mdash; Toggle multi-select per filter</li><li><strong>URL Match Pattern</strong> &mdash; Glob pattern for URL matching (e.g., <code class="code-inline">${value}*</code>)</li><li><strong>Hide from filter bar</strong> <span class="hidden-badge">(hidden)</span> &mdash; Makes this filter invisible in the UI but active in the URL</li><li><strong>Exclude Selections</strong> <span class="exclude-badge">Exclude</span> &mdash; Switches from include to exclude mode for this filter</li><li><strong>Preselected values</strong> &mdash; Values to auto-select on load (hidden filters) or as defaults (visible filters)</li></ul><div class="info-card tip"><div class="info-card-title"><i class="bi bi-eye"></i> Live Preview</div>A live preview panel shows the actual values extracted from the cached device data, so you can verify extraction settings before saving.</div></div></div><div class="accordion-sub"><div class="accordion-sub-header" onclick="toggleSubSection(this)"><span><i class="bi bi-check-circle"></i> Final Step: Review &amp; Save</span> <i class="bi bi-chevron-down section-chevron"></i></div><div class="accordion-sub-content"><p>The review page shows summary cards for each filter, plus a preview mockup of the filter bar.</p><ul><li>Use <strong>up/down arrows</strong> on each card to reorder filters; use <strong>Remove</strong> on a card to delete that filter (at least one filter must remain)</li><li>Hidden filters show an orange <span class="hidden-badge">(hidden)</span> badge and appear dimmed in the mockup</li><li>Exclude-mode filters show a red &quot;Mode: Exclude&quot; indicator</li><li>Verify each filter&#39;s property, extraction method, and options</li><li>Click <strong>Save Configuration</strong> to apply and auto-write the config back to the widget source</li></ul><div class="info-card"><div class="info-card-title"><i class="bi bi-info-circle"></i> After Saving</div>The wizard closes and the widget reloads with your new configuration. The config is also written into the widget&#39;s HTML source via the LM API, so all users on this dashboard get the updated config on next load.</div></div></div><div class="info-card important"><div class="info-card-title"><i class="bi bi-exclamation-circle"></i> Popup Blocked?</div>The wizard opens in a popup window. If your browser blocks it, a fallback inline modal will appear. To use the popup, allow popups for the LogicMonitor domain.</div></div></div><!-- Self-Updating Config (v6/v7) --><div class="guide-section" id="self-update"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-arrow-repeat icon"></i> Self-Updating Configuration</h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><p>Every time you save the configuration, FilterWidget v7 <strong>writes the new config directly back into its own widget source HTML</strong> via the LM REST API. This means all users who load the dashboard will automatically see the updated configuration &mdash; no need to manually import a JSON file or edit the widget HTML.</p><h3>How It Works</h3><div class="workflow-diagram"><div class="workflow-step"><div class="step-num">1</div><div class="step-label">Locate Self</div><div class="step-desc">Scans text widgets for sentinel marker</div></div><div class="workflow-arrow"><i class="bi bi-arrow-right"></i></div><div class="workflow-step"><div class="step-num">2</div><div class="step-label">Fetch Content</div><div class="step-desc">GET full widget object from LM API</div></div><div class="workflow-arrow"><i class="bi bi-arrow-right"></i></div><div class="workflow-step"><div class="step-num">3</div><div class="step-label">Splice Config</div><div class="step-desc">Replace config between sentinel markers</div></div><div class="workflow-arrow"><i class="bi bi-arrow-right"></i></div><div class="workflow-step"><div class="step-num">4</div><div class="step-label">Write Back</div><div class="step-desc">PUT updated widget to LM API</div></div></div><h3>Config Sentinel Markers</h3><p>The <code class="code-inline">DEFAULT_FILTER_CONFIG</code> block in the widget source is wrapped with two sentinel comments:</p><div class="code-block"><span class="comment">// %%FWV7_CONFIG_BEGIN%%</span> <span class="keyword">const</span> <span class="prop">DEFAULT_FILTER_CONFIG</span> = { <span class="comment">/* ... your config ... */</span> }; <span class="comment">// %%FWV7_CONFIG_END%%</span></div><p>These markers serve two purposes: they identify the widget&#39;s own text widget in the LM API (fingerprint), and they act as splice anchors for safely updating only the config block without touching any other HTML, CSS, or JS in the widget.</p><h3>Graceful Fallback</h3><ul><li>If the API PUT fails (insufficient write permissions, popup context, network error), the config is still saved to localStorage and the user sees a <strong>warning message</strong></li><li>The filter still works correctly using localStorage config</li><li>Other users will not see the updated config until someone with write permission saves again</li></ul><div class="info-card warning"><div class="info-card-title"><i class="bi bi-exclamation-triangle"></i> Requires Write Permission</div>The self-update requires write access to the LogicMonitor dashboard. Read-only users can still configure filters locally (saved in localStorage) but the changes won&#39;t persist for other users.</div><h3>Export / Import as Backup</h3><p>Even with self-updating config, JSON export/import is still available via the settings menu as a backup and cross-environment transfer mechanism.</p></div></div><!-- Field Reference --><div class="guide-section" id="field-reference"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-card-list icon"></i> Field Reference</h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><h3>Core Filter Properties</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th style="width: 160px;">Property</th><th style="width: 70px;">Type</th><th>Description</th></tr></thead><tbody><tr><td><code class="code-inline">id</code></td><td>string</td><td>Internal filter identifier. Auto-generated from label and visibility condition, or manually set in the wizard.</td></tr><tr><td><code class="code-inline">label</code></td><td>string</td><td>Display label shown above the dropdown.</td></tr><tr><td><code class="code-inline">placeholder</code></td><td>string</td><td>Placeholder text in the search input.</td></tr><tr><td><code class="code-inline">property</code></td><td>string</td><td>LM filter property name used in the dashboard URL filter parameter.</td></tr><tr><td><code class="code-inline">source</code></td><td>string</td><td><code class="code-inline">&quot;api&quot;</code> (device property extraction) or <code class="code-inline">&quot;static&quot;</code> (custom list).</td></tr><tr><td><code class="code-inline">includeAll</code></td><td>boolean</td><td>Whether to show an &quot;All&quot; option at the top of the dropdown.</td></tr><tr><td><code class="code-inline">allValue</code></td><td>string</td><td>Value used when &quot;All&quot; is selected. Default: <code class="code-inline">&quot;*&quot;</code></td></tr><tr><td><code class="code-inline">globPattern</code></td><td>string</td><td>URL filter pattern. Use <code class="code-inline">${value}</code> as placeholder. Examples: <code class="code-inline">${value}*</code> (prefix), <code class="code-inline">${value}</code> (exact), <code class="code-inline">*${value}*</code> (contains).</td></tr><tr><td><code class="code-inline">multiSelect</code></td><td>boolean</td><td>Whether the filter allows multiple selections. Default: <code class="code-inline">true</code>.</td></tr><tr><td><code class="code-inline">visibleWhen</code></td><td>object/null</td><td>Conditional visibility. Keys are upstream filter IDs, values are arrays of display names. Example: <code class="code-inline">{&quot;datacenter&quot;: [&quot;Azure Filter&quot;]}</code>. Null/omitted = always visible.</td></tr><tr><td><code class="code-inline">staticOptions</code></td><td>array</td><td>For <code class="code-inline">source: &quot;static&quot;</code> &mdash; list of option strings (e.g., <code class="code-inline">[&quot;Azure Filter&quot;, &quot;QTS Filter&quot;]</code>).</td></tr></tbody></table></div><h3>New in v7</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th style="width: 160px;">Property</th><th style="width: 70px;">Type</th><th>Description</th></tr></thead><tbody><tr><td><code class="code-inline">hidden</code></td><td>boolean</td><td>If <code class="code-inline">true</code>, this filter never renders a dropdown or appears in the status strip. Its values are still included in the URL. Default: <code class="code-inline">false</code>.</td></tr><tr><td><code class="code-inline">filterMode</code></td><td>string</td><td><code class="code-inline">&quot;include&quot;</code> (default) shows only matching resources. <code class="code-inline">&quot;exclude&quot;</code> hides matching resources and adds <code class="code-inline">&quot;i&quot;:&quot;e&quot;</code> to the URL filter entry.</td></tr><tr><td><code class="code-inline">preselectedValues</code></td><td>string[]</td><td>For hidden filters: restrict auto-selection to only these values. For visible filters: apply as defaults on first load when no URL or localStorage state exists. Default: <code class="code-inline">[]</code> (no restriction / no defaults).</td></tr></tbody></table></div><h3>Device Property Extraction (API Source)</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th style="width: 180px;">Property</th><th style="width: 70px;">Type</th><th>Description</th></tr></thead><tbody><tr><td><code class="code-inline">valuePropertyName</code></td><td>string</td><td>Device property name to extract unique values from (e.g., <code class="code-inline">customer.squad</code>).</td></tr><tr><td><code class="code-inline">delimiter</code></td><td>string</td><td>Character to split multi-valued properties (e.g., <code class="code-inline">,</code>).</td></tr><tr><td><code class="code-inline">valueFilter</code></td><td>string</td><td>JS expression to filter split values. Example: <code class="code-inline">value.startsWith(&#39;Customers_Azure/&#39;)</code></td></tr><tr><td><code class="code-inline">valueTransform</code></td><td>string</td><td>JS expression to transform each value. Example: <code class="code-inline">value.split(&#39;/&#39;)[2] || &#39;&#39;</code></td></tr></tbody></table></div><h3>Data Storage Keys (localStorage)</h3><div class="table-wrapper"><table class="field-table"><thead><tr><th style="width: 280px;">Key</th><th>Purpose</th></tr></thead><tbody><tr><td><code class="code-inline">filterWidgetV7Config</code></td><td>Runtime filter configuration (filter definitions, properties, extraction rules)</td></tr><tr><td><code class="code-inline">filterWidgetV7WizardState</code></td><td>Wizard metadata for re-editing (extraction presets, step state)</td></tr><tr><td><code class="code-inline">filterWidgetV7State</code></td><td>Last-used filter selections and cached dropdown options</td></tr><tr><td><code class="code-inline">filterWidgetV7Presets</code></td><td>Saved filter value presets</td></tr><tr><td><code class="code-inline">filterWidgetV7APICache</code></td><td>Cached API/device responses (30-minute TTL, versioned)</td></tr></tbody></table></div></div></div><!-- Troubleshooting --><div class="guide-section" id="troubleshooting"><div class="section-header" onclick="toggleSection(this)"><h2><i class="bi bi-wrench-adjustable icon"></i> Troubleshooting</h2><i class="bi bi-chevron-down section-chevron"></i></div><div class="section-content"><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Wizard popup doesn&#39;t open</div><div class="faq-answer">Your browser may be blocking popups. Allow popups for the LogicMonitor domain, or use the fallback inline modal that appears automatically. Check for a browser notification about blocked popups in the address bar.</div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Config button is grayed out / disabled</div><div class="faq-answer">The configuration button is disabled until the device cache finishes loading. A centered &quot;Loading device data...&quot; banner is shown while loading. Wait for it to disappear. If the button stays disabled, check the browser console for errors and verify your LM session is active.</div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Widget or filters take a long time to load</div><div class="faq-answer">Load time grows with how much work the widget does: fetching and scanning the device cache, then building options for each API-based filter in order. If startup feels slow, review your configuration and remove <strong>unnecessary filters</strong> (filters you don&#39;t need for that dashboard). More filters mean more extraction passes and more cascading work. Prefer <strong>conditional visibility</strong> (<code class="code-inline">visibleWhen</code>) so inactive branches don&#39;t add cost, use <strong>hidden filters</strong> only where needed, and avoid duplicating logic across filters. After trimming, use <strong>Clear API Cache</strong> and refresh once to measure improvement.</div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> &quot;Authentication failed&quot; error</div><div class="faq-answer">Your LogicMonitor session has expired. Refresh the page and log in again. The widget reuses your active LM session cookies for all API access.</div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Dashboard appears empty after clicking Apply</div><div class="faq-answer">One of the following may be over-restricting:<ol><li>A <strong>hidden filter</strong> with no matching values. Check hidden filter config &mdash; its <code class="code-inline">preselectedValues</code> or auto-selected values may not match any devices.</li><li>A filter in <strong>exclude mode</strong> that is excluding too much. Check exclude-mode filters and their selections.</li><li>Upstream filters that have narrowed the device pool too aggressively (combination of multiple strict selections).</li></ol></div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Hidden filter doesn&#39;t seem to be doing anything</div><div class="faq-answer">Check the following:<ol><li>Verify <code class="code-inline">hidden: true</code> is set on the filter in the config (wizard Review step will show the orange &quot;(hidden)&quot; badge)</li><li>Open browser DevTools &rarr; Network tab and click Apply. Inspect the URL &mdash; the hidden filter&#39;s property should appear in the <code class="code-inline">filters</code> parameter</li><li>If <code class="code-inline">preselectedValues</code> is set, confirm those values actually exist in the device data (open the wizard and check the live preview)</li><li>If the hidden filter has <code class="code-inline">visibleWhen</code>, make sure its upstream condition is currently met</li></ol></div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Self-update fails / &quot;Saving to widget source&quot; warning appears</div><div class="faq-answer">The self-update writes back to the widget via the LM REST API and requires write permission on the dashboard. If you see a warning instead of a success message:<ol><li>Confirm you have write/edit access to the dashboard</li><li>If the widget is running in a popup or iframe context, the PUT may be blocked. Use Export Config as a manual backup instead.</li><li>Config is still saved to localStorage, so the widget works for you. Other users won&#39;t see the updated config until someone with write access saves again.</li></ol></div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Filters show no options or wrong values</div><div class="faq-answer"><ol><li>Check that <code class="code-inline">valuePropertyName</code> matches an actual device property name</li><li>Open the wizard and check the <strong>live preview</strong> panel &mdash; it shows extracted values from cached devices</li><li>For &quot;Split and pick&quot; extraction, verify the separator, starts-with filter, split character, and piece index</li><li>Check the browser console for messages about device match counts</li></ol></div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Filter options seem outdated / stale data</div><div class="faq-answer">Use <strong>Clear API Cache</strong> from the settings menu (▶ Filter Configuration &rarr; Clear API Cache). The device cache has a 30-minute TTL. After clearing, refresh the page for fresh data.</div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Preselected values not auto-selecting on first load</div><div class="faq-answer">Preselected defaults for visible filters only apply when there is <strong>no existing URL state or localStorage state</strong> for that filter. If you&#39;ve previously applied filters, localStorage has saved values that take priority. Clear All from the Presets panel and refresh to test first-load behavior.</div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Exclude mode filter is still showing excluded resources</div><div class="faq-answer">Verify the URL after clicking Apply contains <code class="code-inline">&quot;i&quot;:&quot;e&quot;</code> in the filter entry for that property. If not, re-open the wizard, check that &quot;Exclude Selections&quot; is toggled on for that filter, and save again. Also confirm the LM dashboard version supports the <code class="code-inline">i</code> exclude flag (it&#39;s a native LM feature available in current versions).</div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Conditional filter not appearing</div><div class="faq-answer">Check the <code class="code-inline">visibleWhen</code> rule in the wizard. The upstream filter&#39;s selected display name must exactly match one of the allowed values. For multi-select, the conditional filter appears if <strong>any</strong> of the upstream selections match.</div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> Wizard popup shows a blank page</div><div class="faq-answer">Check the browser console (F12) for JavaScript errors. The most common cause is a template literal escaping issue. Try refreshing the page and reopening the wizard. If it persists, use Export Config to backup, click Clear All, and re-import.</div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> How do I reset to the default configuration in the widget script?</div><div class="faq-answer">Use <strong>Filter Configuration &rarr; Reset to embedded default&hellip;</strong>. You can download a JSON backup of your current config first, then confirm. This replaces the browser&#39;s saved configuration with the default definitions pasted into the text widget in LogicMonitor. Your named <strong>Filter Presets</strong>are not deleted.<p style="margin: 12px 0 0 0;"><strong>Clear All</strong> (under Filter Presets) is different: it wipes presets, cached config, wizard state, selections, and API cache in one step. Use that only when you want a full local wipe; afterward, reload the page to pick up the embedded default from the script.</p></div></div><div class="faq-item"><div class="faq-question"><i class="bi bi-question-circle"></i> I updated the config but other users still see the old config</div><div class="faq-answer">The self-update may have failed silently (check for a warning message after saving). Ensure you have write access to the dashboard. If the PUT succeeded, other users should see the new config on their next page load &mdash; they may need to clear their localStorage cache (<strong>Clear All</strong>) if they have an older config cached locally.</div></div><div class="info-card"><div class="info-card-title"><i class="bi bi-info-circle"></i> Getting Help</div>If you continue experiencing issues, export your configuration (Filter Configuration &rarr; Export Config) and share it with your administrator for debugging. Include any browser console errors (F12 &rarr; Console tab).</div></div></div></div><!-- end .guide-body --> <!-- Footer --><div class="guide-footer"><strong>FilterWidget v7</strong> &mdash; Hidden filters &bull; Exclude mode &bull; Preselected values &bull; Self-updating config &bull; Up to 15 filters &mdash; Data stored locally in your browser</div></div><script>
+	function toggleSection(header)
+	{
+		const content = header.nextElementSibling;
+		const chevron = header.querySelector('.section-chevron');
+		content.classList.toggle('open');
+		chevron.classList.toggle('open');
+	}
+
+	function toggleSubSection(header)
+	{
+		const content = header.nextElementSibling;
+		const chevron = header.querySelector('.section-chevron');
+		content.classList.toggle('open');
+		chevron.classList.toggle('open');
+	}
+
+	function openSection(sectionId)
+	{
+		const section = document.getElementById(sectionId);
+		if (section)
+		{
+			const content = section.querySelector('.section-content');
+			const chevron = section.querySelector('.section-chevron');
+			if (!content.classList.contains('open'))
+			{
+				content.classList.add('open');
+				chevron.classList.add('open');
+			}
+			section.scrollIntoView(
+			{
+				behavior: 'smooth',
+				block: 'start'
+			});
+		}
+	}
+
+</script>
