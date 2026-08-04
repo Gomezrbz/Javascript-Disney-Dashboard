@@ -41,12 +41,12 @@ Two issues in the old Severity builder:
 
 ### Fix (current)
 
-1. Prefer portal `/device/devices` with documented advanced filters:
+1. Portal `/device/devices` with documented advanced filters:
    - Categories: `systemProperties~"{\"name\":\"system.categories\",\"value\":\"*Aruba*\"}"`
    - Custom props: exact `customProperties:"{\"name\":\"customer\",\"value\":\"…\"}"`
-2. Skip empty / `All` / `*` values.
-3. If the API returns **400** or **0 devices**, fall back to unfiltered device pages + **client-side** comma-token matching (same idea as FilterWidget).
-4. Alert scoping still uses `monitorObjectName` / `monitorObjectGroups` as before.
+2. Skip empty / `All` / `*` values; avoid unnecessary `(…)` around a single clause.
+3. Alert scoping uses `monitorObjectName` / `monitorObjectGroups`, with **chunked** name queries when many devices match.
+4. Friendly message on remaining API 400s (invalid filter).
 
 ---
 
@@ -58,20 +58,24 @@ Two issues in the old Severity builder:
 - **Categories** use contains + wildcards: `systemProperties~"{\"name\":\"system.categories\",\"value\":\"*Aruba*\"}"` (not exact `:`).
 - Custom props (`customer`, etc.) use exact `customProperties:"…"`.
 - Empty / null / `All` / `*` values are skipped.
-- On API **400** or zero hits → client-side comma-token match (FilterWidget-compatible fallback).
-- Zero matches show **“No matching resources found”** instead of a raw API error.
+- Zero device matches show **“No matching resources found”** instead of a raw API error.
 - Alert API filters still use supported fields only: `cleared`, `sdted`, `severity`, `monitorObjectGroups`, `monitorObjectName`.
-- Debug mode (`?debug=1` or `localStorage.lmDashDebug=1`) logs filter expressions and timings (no credentials/tokens).
+- **FilterWidget** remains the previous working Operations copy (Apply/Reset/URL filters unchanged).
 
-### Performance
+### Performance (Severity Breakdown — current)
 
-- **`mapPool` with `CONCURRENCY = 3`** for device and alert pagination (Severity) and Resource Selector `warmDeviceCache`.
-- Progressive KPI/chart render after the first alert page.
-- Device cache in `sessionStorage` key `lmDashDeviceCache_v1` (30 min TTL); FilterWidget writes the same key after warm so Severity can reuse it.
-- `AbortController` + load generation so obsolete responses cannot overwrite newer filter selections.
-- Timeouts (30s), retries with exponential backoff on 429/5xx (up to 3).
-- Partial page failure keeps already-loaded alert data with a warning.
-- Interval refresh respects cache TTL (`load(false)` instead of forced refresh).
+FilterWidget is left on the **working previous** implementation (do not regress Apply/Reset). Speed work is **Severity-only**:
+
+- **`mapPool` with `CONCURRENCY = 3`** for `/device/devices` and `/alert/alerts` pagination after page 0.
+- **Chunked `monitorObjectName` queries** (`NAME_CHUNK = 20`): when a category matches many devices, Severity runs parallel scoped alert queries instead of downloading the global alert set and filtering in the browser (main cause of ~20s loads).
+- **Progressive render:** KPIs/charts update after the first alert page, then refine.
+- **Device-name cache** in `sessionStorage` (`lmDashDeviceNameCache_v1`, 10 min) keyed by the device filter expression.
+- **Slimmer device fields:** `id,name,displayName` only when resolving names (properties already applied via API filter).
+- **Load generation** so overlapping refreshes do not overwrite newer results.
+- **Interval refresh** uses `load(false)` so the 45s analytics cache is respected.
+- Meta line shows elapsed ms (e.g. `· 3200ms`).
+
+Aruba / category filter syntax remains: `systemProperties~"…*Aruba*"`.
 
 ---
 
@@ -79,12 +83,11 @@ Two issues in the old Severity builder:
 
 | File | Change |
 | --- | --- |
-| [`src/severity_script_0.js`](../src/severity_script_0.js) | Full Severity analytics rewrite (filters + concurrency) |
-| [`src/fw_script_0.js`](../src/fw_script_0.js) | Bounded `warmDeviceCache` + shared device cache write |
-| [`import/Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json`](../import/Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json) | **Only** dashboard JSON to import |
-| [`src/widgets/*`](../src/widgets/) | HTML mirrors for Dark v1 widgets |
-| [`src/sync_embed.js`](../src/sync_embed.js) | Re-embeds scripts into the import JSON |
-| [`src/test_filter_helpers.js`](../src/test_filter_helpers.js) | Offline filter helper tests |
+| [`src/severity_script_0.js`](../src/severity_script_0.js) | Severity: parallel pages, name-chunked alerts, progressive UI, name cache |
+| [`import/Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json`](../import/Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json) | **Only** dashboard JSON to import (Severity embedded; FilterWidget = previous working copy) |
+| [`src/widgets/…Severity….html`](../src/widgets/) | Severity HTML mirror |
+| [`src/sync_embed.js`](../src/sync_embed.js) | Re-embeds **Severity only** (does not touch FilterWidget) |
+| [`src/previous_dashboards/Alert_Dashboard___Operations.json`](../src/previous_dashboards/Alert_Dashboard___Operations.json) | Reference FilterWidget that must keep working |
 
 ---
 
@@ -93,24 +96,23 @@ Two issues in the old Severity builder:
 | Before | After |
 | --- | --- |
 | Sequential alert pages ≈ N × RTT | Up to 3 alert pages in flight after page 0 |
-| Sequential device pages for meta filters | Bounded parallel device pages + 30 min cache |
-| Unbounded FilterWidget `Promise.all` | Cap at 3 concurrent device pages |
-| Wait for all pages before UI update | Progressive render after first page |
-| Forced cache bypass every 60s | Refresh respects 45s analytics cache TTL |
-| One failed call zeros entire widget | Partial results + friendly errors; empty match message |
+| Sequential device pages for meta filters | Bounded parallel device pages + 10 min name cache |
+| \>20 matching devices → fetch **all** alerts, filter in browser | Chunked `monitorObjectName` queries (20 names each), parallel |
+| Wait for every page before UI update | Progressive render after first page |
+| Forced cache bypass every 60s (`load(true)`) | Refresh respects 45s analytics cache TTL |
 
 ### Before / after loading measurements
 
-Instrument with `?debug=1` (or `localStorage.setItem('lmDashDebug','1')`). Severity `aaMeta` then includes: total ms, API call count, peak concurrency, filter ms, aggregate ms.
+Severity meta shows wall time (`· Nms`). Compare after re-import:
 
 | Scenario | Before (approx.) | After (expected) | Notes |
 | --- | --- | --- | --- |
 | No filters, ~2k alerts (2 pages) | ~2 × RTT sequential (~1.5–4s) | ~1 × RTT + parallel page 2 (~0.8–2s) | Progressive KPIs after page 1 |
-| Category Aruba (cold, ~8 device pages) | Device resolve sequential + often 400 fail | Device pages ≤3 concurrent or cache hit; then alerts | First cold warm shared via `lmDashDeviceCache_v1` |
-| Category Aruba (warm cache) | N/A (previously failed) | Device resolve ~local filter only (~tens of ms) + alerts | Best case after Resource Selector warm |
-| Large portal device warm (FilterWidget) | All pages at once (429 risk) | 3-at-a-time steady fetch | Slightly slower than unbounded parallel; safer |
+| Category with many devices (was ~20s) | Broad alert download + client filter | Chunked scoped alert queries | Largest win |
+| Same category again within 10 min | Full device resolve again | Name cache hit | Faster second Apply |
+| Idle refresh within 45s | Full reload (`load(true)`) | Cached analytics | Near-instant |
 
-*Portal wall-clock numbers depend on collector latency and portal size. Capture actuals from debug meta after import and replace the expected ranges above if needed.*
+*Portal wall-clock depends on portal size and latency. Use the `· Nms` meta after import to record real numbers.*
 
 ---
 
@@ -132,24 +134,22 @@ GET /santaba/rest/alert/alerts?size=1000&offset=0&sort=-startEpoch
 
 ### 2. Category Aruba only
 
-**Device resolve (portal advanced filter):**
+**Device resolve (portal advanced filter, parallel pages after page 0):**
 
 ```http
 GET /santaba/rest/device/devices?size=1000&offset=0
-  &fields=id,name,displayName,systemProperties,autoProperties,customProperties,inheritedProperties
+  &fields=id,name,displayName
   &filter=systemProperties~"{\"name\":\"system.categories\",\"value\":\"*Aruba*\"}"
 ```
 
-If that returns 400 or 0 devices, the widget falls back to unfiltered device pages and matches `system.categories` tokens client-side (comma-split, same as FilterWidget).
-
-**Alert request** (example when ≤20 matching names):
+**Alert request** — if ≤20 matching names, one scoped filter:
 
 ```http
 GET /santaba/rest/alert/alerts?size=1000&offset=0&sort=-startEpoch
   &filter=cleared:false,sdted:false,severity:"4"|"3"|"2",monitorObjectName:"deviceA|deviceB|..."
 ```
 
-If more than 20 names match, the alert filter stays severity/cleared/sdted only and names are applied client-side.
+If **more than 20** names match, Severity runs several such requests in parallel (chunks of 20 names each) instead of fetching all portal alerts and filtering in the browser.
 
 ### 3. Multiple combined filters
 

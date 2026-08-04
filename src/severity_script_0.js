@@ -1,21 +1,32 @@
 (function () {
+  /* Severity Breakdown — keep working filter semantics; speed up load:
+   * - Bounded parallel device/alert pagination (CONCURRENCY)
+   * - Chunked monitorObjectName queries when >20 devices (avoid broad alert fetch)
+   * - Progressive render after first alert page
+   * - Optional sessionStorage device-name cache keyed by device filter
+   * - Interval refresh respects analytics cache TTL
+   */
   const CACHE_KEY = 'lmAlertDashAnalytics_v1';
   const CACHE_TTL_MS = 45000;
+  const DEVICE_NAME_CACHE_KEY = 'lmDashDeviceNameCache_v1';
+  const DEVICE_NAME_CACHE_TTL_MS = 10 * 60 * 1000;
   const PAGE_SIZE = 1000;
   const MAX_OFFSET = 10000;
   const MAX_RECORDS = 10000;
   const REFRESH_MS = 60000;
-  const SEV = { critical: 4, error: 3, warn: 2 };
+  const CONCURRENCY = 3; // bounded — do not raise without checking LM rate limits
+  const NAME_CHUNK = 20; // max monitorObjectName OR values per alert API call
   const SEV_COLORS = { critical: '#e0351b', error: '#ff8c00', warn: '#f5ca1d' };
   const SEV_LABELS = { critical: 'Critical', error: 'Error', warn: 'Warning' };
 
   let csrfToken = null;
   let csrfFetchedAt = 0;
   const CSRF_TTL = 4 * 60 * 1000;
+  let loadGeneration = 0;
 
   function esc(s) {
     return String(s == null ? '' : s)
-      .replace(/&/g, '&').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
@@ -46,6 +57,35 @@
 
   function isAllOrEmpty(vals) {
     return !vals || !vals.length || vals.every(function (v) { return v === '*' || v === ''; });
+  }
+
+  /** Run async workers with a fixed concurrency ceiling. */
+  async function mapPool(items, limit, worker) {
+    const results = new Array(items.length);
+    let next = 0;
+    const n = Math.min(limit, Math.max(1, items.length));
+    const workers = [];
+    for (let w = 0; w < n; w++) {
+      workers.push((async function () {
+        while (true) {
+          const i = next++;
+          if (i >= items.length) return;
+          results[i] = await worker(items[i], i);
+        }
+      })());
+    }
+    await Promise.all(workers);
+    return results;
+  }
+
+  function extractItems(data) {
+    return (data && data.data && data.data.items) || (data && data.items) || [];
+  }
+
+  function extractTotal(data, items) {
+    if (data && data.data && typeof data.data.total === 'number') return data.data.total;
+    if (typeof data.total === 'number') return data.total;
+    return items.length;
   }
 
   async function fetchCsrf() {
@@ -98,6 +138,57 @@
     return parts;
   }
 
+  function readNameCache(filterKey) {
+    try {
+      const raw = sessionStorage.getItem(DEVICE_NAME_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.key !== filterKey) return null;
+      if (!parsed.ts || (Date.now() - parsed.ts) > DEVICE_NAME_CACHE_TTL_MS) return null;
+      if (!Array.isArray(parsed.names)) return null;
+      return parsed.names;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeNameCache(filterKey, names) {
+    try {
+      sessionStorage.setItem(DEVICE_NAME_CACHE_KEY, JSON.stringify({
+        key: filterKey,
+        ts: Date.now(),
+        names: names
+      }));
+    } catch (e) { /* quota */ }
+  }
+
+  /** Paginate devices with optional filter; remaining pages use bounded concurrency. */
+  async function fetchDevicePages(filterExpr) {
+    // Names only — properties already applied via API filter when present
+    const fields = 'id,name,displayName';
+    const filterQs = filterExpr ? '&filter=' + encodeURIComponent(filterExpr) : '';
+    const firstData = await lmGet('/device/devices?size=' + PAGE_SIZE + '&offset=0&fields=' + fields + filterQs);
+    const firstItems = extractItems(firstData);
+    const total = extractTotal(firstData, firstItems);
+    const itemsOut = firstItems.slice();
+
+    const totalPages = Math.ceil(Math.min(total, MAX_OFFSET) / PAGE_SIZE);
+    if (totalPages > 1 && firstItems.length >= PAGE_SIZE) {
+      const offsets = [];
+      for (let p = 1; p < totalPages; p++) offsets.push(p * PAGE_SIZE);
+      const pages = await mapPool(offsets, CONCURRENCY, async function (offset) {
+        const data = await lmGet(
+          '/device/devices?size=' + PAGE_SIZE + '&offset=' + offset + '&fields=' + fields + filterQs
+        );
+        return extractItems(data);
+      });
+      pages.forEach(function (items) {
+        for (let i = 0; i < items.length; i++) itemsOut.push(items[i]);
+      });
+    }
+    return itemsOut;
+  }
+
   async function resolveDeviceNames(urlFilters) {
     const byProp = {};
     urlFilters.forEach(function (f) {
@@ -132,37 +223,35 @@
     }
 
     const filter = clauses.join(',');
-    const names = new Set(displayNames);
-    let offset = 0;
-    let total = Infinity;
-    while (offset < total && offset < MAX_OFFSET) {
-      const q = '/device/devices?size=' + PAGE_SIZE + '&offset=' + offset +
-        '&fields=id,name,displayName,systemProperties,customProperties' +
-        (filter ? '&filter=' + encodeURIComponent(filter) : '');
-      const data = await lmGet(q);
-      const items = (data && data.data && data.data.items) || (data && data.items) || [];
-      total = (data && data.data && typeof data.data.total === 'number') ? data.data.total
-        : (typeof data.total === 'number' ? data.total : items.length);
-      items.forEach(function (d) {
-        if (d.displayName) names.add(d.displayName);
-        if (d.name) names.add(d.name);
-      });
-      if (!items.length) break;
-      offset += items.length;
-      if (items.length < PAGE_SIZE) break;
+    const cacheKey = filter + '|' + displayNames.slice().sort().join('|');
+    const cached = readNameCache(cacheKey);
+    if (cached) {
+      return { names: cached, forcedNames: displayNames.length ? displayNames : null };
     }
 
+    const devices = await fetchDevicePages(filter);
+    const names = new Set(displayNames);
+    devices.forEach(function (d) {
+      if (d.displayName) names.add(d.displayName);
+      if (d.name) names.add(d.name);
+    });
+
+    let out;
     if (displayNames.length) {
       const allowed = new Set(displayNames);
       const intersect = [];
       names.forEach(function (n) { if (allowed.has(n)) intersect.push(n); });
-      // If metadata narrowed the set, use intersection; if devices API returned none matching display filter, use displayNames only when no meta
-      if (clauses.length) return { names: intersect.length ? intersect : Array.from(names), forcedNames: displayNames };
+      out = intersect.length ? intersect : Array.from(names);
+    } else {
+      out = Array.from(names);
     }
-    return { names: Array.from(names), forcedNames: displayNames.length ? displayNames : null };
+
+    writeNameCache(cacheKey, out);
+    return { names: out, forcedNames: displayNames.length ? displayNames : null };
   }
 
-  function buildAlertFilter(urlFilters, deviceNames) {
+  /** Base alert filter: cleared/sdted/severity + optional groups (no device names). */
+  function buildAlertFilterBase(urlFilters) {
     const parts = ['cleared:false', 'sdted:false', 'severity:"4"|"3"|"2"'];
     const byProp = {};
     urlFilters.forEach(function (f) {
@@ -177,16 +266,14 @@
       }).join('|');
       parts.push('monitorObjectGroups:"' + gvals.replace(/"/g, '') + '"');
     }
-
-    if (deviceNames && deviceNames.length) {
-      if (deviceNames.length === 1) {
-        parts.push('monitorObjectName:"' + deviceNames[0].replace(/"/g, '') + '"');
-      } else if (deviceNames.length <= 20) {
-        parts.push('monitorObjectName:"' + deviceNames.map(function (n) { return n.replace(/"/g, ''); }).join('|') + '"');
-      }
-      // if many names, fetch broadly and filter client-side
-    }
     return parts.join(',');
+  }
+
+  function withMonitorObjectNames(baseFilter, names) {
+    if (!names || !names.length) return baseFilter;
+    const cleaned = names.map(function (n) { return String(n).replace(/"/g, ''); });
+    if (cleaned.length === 1) return baseFilter + ',monitorObjectName:"' + cleaned[0] + '"';
+    return baseFilter + ',monitorObjectName:"' + cleaned.join('|') + '"';
   }
 
   function normalizeSeverity(a) {
@@ -197,42 +284,123 @@
     return null;
   }
 
-  async function fetchAllAlerts(filter, nameAllowSet) {
-    const alerts = [];
-    let offset = 0;
-    let total = Infinity;
-    let truncated = false;
-    while (offset < total && offset < MAX_OFFSET && alerts.length < MAX_RECORDS) {
-      const q = '/alert/alerts?size=' + PAGE_SIZE + '&offset=' + offset +
-        '&sort=-startEpoch&filter=' + encodeURIComponent(filter) +
-        '&fields=id,severity,cleared,sdted,acked,monitorObjectName,resourceTemplateName,instanceName,dataPointName,startEpoch';
-      const data = await lmGet(q);
-      const items = (data && data.data && data.data.items) || (data && data.items) || [];
-      total = (data && data.data && typeof data.data.total === 'number') ? data.data.total
-        : (typeof data.total === 'number' ? data.total : offset + items.length);
-      items.forEach(function (a) {
-        if (nameAllowSet && nameAllowSet.size) {
-          const n = a.monitorObjectName || '';
-          if (!nameAllowSet.has(n)) return;
-        }
-        const sev = normalizeSeverity(a);
-        if (!sev) return;
-        alerts.push({
-          severity: sev,
-          monitorObjectName: a.monitorObjectName || 'Unknown',
-          resourceTemplateName: a.resourceTemplateName || a.instanceName || 'Unknown'
-        });
-      });
-      if (!items.length) break;
-      offset += items.length;
-      if (items.length < PAGE_SIZE) break;
-      if (offset >= MAX_OFFSET || alerts.length >= MAX_RECORDS) {
-        truncated = true;
-        break;
+  function pushAlertItems(alerts, items, nameAllowSet) {
+    items.forEach(function (a) {
+      if (nameAllowSet && nameAllowSet.size) {
+        const n = a.monitorObjectName || '';
+        if (!nameAllowSet.has(n)) return;
       }
+      const sev = normalizeSeverity(a);
+      if (!sev) return;
+      alerts.push({
+        severity: sev,
+        monitorObjectName: a.monitorObjectName || 'Unknown',
+        resourceTemplateName: a.resourceTemplateName || a.instanceName || 'Unknown'
+      });
+    });
+  }
+
+  /**
+   * Fetch all pages for one alert filter expression.
+   * Page 0 first (enables progressive UI); remaining pages in parallel (bounded).
+   */
+  async function fetchAlertPagesForFilter(filter, nameAllowSet, onFirstPage) {
+    const alerts = [];
+    let truncated = false;
+    const fields = 'id,severity,cleared,sdted,acked,monitorObjectName,resourceTemplateName,instanceName,dataPointName,startEpoch';
+    const firstQ = '/alert/alerts?size=' + PAGE_SIZE + '&offset=0&sort=-startEpoch&filter=' +
+      encodeURIComponent(filter) + '&fields=' + fields;
+    const firstData = await lmGet(firstQ);
+    const firstItems = extractItems(firstData);
+    const total = extractTotal(firstData, firstItems);
+    pushAlertItems(alerts, firstItems, nameAllowSet);
+
+    if (typeof onFirstPage === 'function') {
+      onFirstPage({ alerts: alerts.slice(), truncated: false, reportedTotal: total });
     }
+
+    const maxPages = Math.ceil(Math.min(total, MAX_OFFSET, MAX_RECORDS) / PAGE_SIZE);
+    if (maxPages > 1 && firstItems.length >= PAGE_SIZE) {
+      const offsets = [];
+      for (let p = 1; p < maxPages; p++) offsets.push(p * PAGE_SIZE);
+      const pages = await mapPool(offsets, CONCURRENCY, async function (offset) {
+        const q = '/alert/alerts?size=' + PAGE_SIZE + '&offset=' + offset +
+          '&sort=-startEpoch&filter=' + encodeURIComponent(filter) + '&fields=' + fields;
+        const data = await lmGet(q);
+        return extractItems(data);
+      });
+      pages.forEach(function (items) {
+        pushAlertItems(alerts, items, nameAllowSet);
+      });
+    }
+
     if (total > MAX_RECORDS || total > MAX_OFFSET) truncated = true;
+    if (alerts.length > MAX_RECORDS) {
+      alerts.length = MAX_RECORDS;
+      truncated = true;
+    }
     return { alerts: alerts, truncated: truncated, reportedTotal: total };
+  }
+
+  /**
+   * Load alerts for current filters.
+   * When many device names match, run chunked monitorObjectName queries (≤20 each)
+   * in parallel instead of downloading the global alert set.
+   */
+  async function fetchAllAlerts(urlFilters, deviceNames, onProgress) {
+    const base = buildAlertFilterBase(urlFilters);
+
+    // No device scoping needed
+    if (!deviceNames || !deviceNames.length) {
+      return fetchAlertPagesForFilter(base, null, onProgress);
+    }
+
+    // Prefer unique display-oriented names for API (drop duplicates)
+    const unique = Array.from(new Set(deviceNames.map(function (n) { return String(n); })));
+
+    // Single chunk — one scoped filter
+    if (unique.length <= NAME_CHUNK) {
+      const filter = withMonitorObjectNames(base, unique);
+      return fetchAlertPagesForFilter(filter, null, onProgress);
+    }
+
+    // Many devices: chunk names and query in parallel (bounded), merge results
+    const chunks = [];
+    for (let i = 0; i < unique.length; i += NAME_CHUNK) {
+      chunks.push(unique.slice(i, i + NAME_CHUNK));
+    }
+
+    let firstProgressDone = false;
+    const chunkResults = await mapPool(chunks, CONCURRENCY, async function (chunk, idx) {
+      const filter = withMonitorObjectNames(base, chunk);
+      const result = await fetchAlertPagesForFilter(
+        filter,
+        null,
+        (idx === 0 && !firstProgressDone)
+          ? function (partial) {
+              firstProgressDone = true;
+              if (typeof onProgress === 'function') onProgress(partial);
+            }
+          : null
+      );
+      return result;
+    });
+
+    const alerts = [];
+    let truncated = false;
+    let reportedTotal = 0;
+    chunkResults.forEach(function (r) {
+      if (!r) return;
+      for (let i = 0; i < r.alerts.length; i++) alerts.push(r.alerts[i]);
+      if (r.truncated) truncated = true;
+      reportedTotal += r.reportedTotal || 0;
+    });
+
+    if (alerts.length > MAX_RECORDS) {
+      alerts.length = MAX_RECORDS;
+      truncated = true;
+    }
+    return { alerts: alerts, truncated: truncated, reportedTotal: reportedTotal || alerts.length };
   }
 
   function aggregate(alerts) {
@@ -344,8 +512,10 @@
   }
 
   async function load(force) {
+    const gen = ++loadGeneration;
     clearError();
     document.getElementById('aaMeta').textContent = 'Refreshing…';
+    const t0 = Date.now();
     try {
       const urlFilters = parseFiltersFromURL();
       const cacheKey = CACHE_KEY + ':' + JSON.stringify(urlFilters);
@@ -355,6 +525,7 @@
           if (raw) {
             const cached = JSON.parse(raw);
             if (cached && cached.ts && (Date.now() - cached.ts) < CACHE_TTL_MS) {
+              if (gen !== loadGeneration) return;
               render(cached.agg, 'Cached · last refresh ' + new Date(cached.ts).toLocaleTimeString() + (cached.truncated ? ' · truncated' : ''));
               return;
             }
@@ -363,24 +534,36 @@
       }
 
       const resolved = await resolveDeviceNames(urlFilters);
-      let nameAllowSet = null;
-      if (resolved.names && resolved.names.length) {
-        nameAllowSet = new Set(resolved.names);
+      if (gen !== loadGeneration) return;
+
+      const deviceNames = resolved.names; // null = unscoped; [] = no match; [...] = scoped
+      if (Array.isArray(deviceNames) && deviceNames.length === 0) {
+        const emptyAgg = { total: 0, counts: { critical: 0, error: 0, warn: 0 }, sources: [], resources: [] };
+        render(emptyAgg, 'No matching resources');
+        document.getElementById('aaError').style.display = 'block';
+        document.getElementById('aaError').textContent = 'No matching resources found for the selected filters.';
+        return;
       }
-      // Many device names: do not put all in API filter; filter client-side
-      const apiNames = (resolved.names && resolved.names.length && resolved.names.length <= 20) ? resolved.names : null;
-      const filter = buildAlertFilter(urlFilters, apiNames);
-      const result = await fetchAllAlerts(filter, (apiNames ? null : nameAllowSet));
+
+      const result = await fetchAllAlerts(urlFilters, deviceNames, function (partial) {
+        if (gen !== loadGeneration) return;
+        const aggPartial = aggregate(partial.alerts);
+        render(aggPartial, 'Loading… ' + partial.alerts.length + ' alerts so far');
+      });
+      if (gen !== loadGeneration) return;
+
       const agg = aggregate(result.alerts);
       const ts = Date.now();
       try {
         sessionStorage.setItem(cacheKey, JSON.stringify({ ts: ts, agg: agg, truncated: result.truncated }));
       } catch (e) { /* quota */ }
+      const elapsed = ts - t0;
       const meta = 'Last refresh ' + new Date(ts).toLocaleTimeString() +
         (result.truncated ? ' · truncated' : '') +
-        ' · ' + result.alerts.length + ' alerts';
+        ' · ' + result.alerts.length + ' alerts · ' + elapsed + 'ms';
       render(agg, meta);
     } catch (err) {
+      if (gen !== loadGeneration) return;
       var msg = (err && err.message) ? err.message : String(err);
       if (/invalid filter|API 400/i.test(msg)) {
         msg = 'Unable to apply the current filters. Try Reset, or pick a different category/value.';
@@ -397,5 +580,6 @@
   document.getElementById('aaSources').innerHTML = '<div class="aa-loading">Loading…</div>';
   document.getElementById('aaResources').innerHTML = '<div class="aa-loading">Loading…</div>';
   load(false);
-  setInterval(function () { load(true); }, REFRESH_MS);
+  // Respect CACHE_TTL — do not force-bypass cache every tick
+  setInterval(function () { load(false); }, REFRESH_MS);
 })();

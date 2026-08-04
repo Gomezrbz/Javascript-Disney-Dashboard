@@ -60,6 +60,7 @@ Themes use `newBorderGray` for a compact operational look. Map tokens include `M
 1. FilterWidget writes LogicMonitor native resource-property filters into the dashboard URL (`?filters=`).
 2. Native widgets (alert table) automatically respect those RP filters after reload.
 3. Custom analytics parse the same URL parameter and translate it into `/alert/alerts` (and `/device/devices` when needed).
+   Severity loads faster by: bounded parallel pagination (`CONCURRENCY=3`), chunked `monitorObjectName` queries when many devices match (avoids downloading the full alert set), progressive KPI render, and a short-lived device-name cache. FilterWidget behavior matches the previous working Operations dashboard and is not modified by `sync_embed.js`.
 4. The map reads the URL and applies Device Groups (path) and Devices (resource marker filter); other metadata filters show an explicit banner.
 
 FilterWidget v7 features preserved: cascading options, searchable multi-select, Apply/Reset, tags, URL persistence, shareable URLs, presets, API cache, configuration wizard, sentinel markers, self-update, localStorage fallback.
@@ -81,7 +82,7 @@ const DEFAULT_FILTER_CONFIG = { ... };
 | `GET /santaba/rest/functions/dummy` | Analytics, Map, FilterWidget | CSRF bootstrap (`X-Csrf-Token: Fetch`, `X-Version: 3`) |
 | `GET /santaba/rest/device/devices` | FilterWidget options; analytics metadata resolution; map (resources mode) | Device/property enumeration |
 | `GET /santaba/rest/device/groups` | Better Map (default `MapSourceType=groups`) | Group markers + `alertStatus` |
-| `GET /santaba/rest/alert/alerts` | Severity / distribution analytics | Paginated active alerts (`size`≤1000, offset capped at 10000) |
+| `GET /santaba/rest/alert/alerts` | Severity / distribution analytics | Paginated active alerts (`size`≤1000, offset capped at 10000). Pages after the first are fetched with bounded concurrency (3). When many devices match a metadata filter, names are queried in chunks of ≤20 via `monitorObjectName` instead of a broad unscoped alert download. |
 
 **Alert query baseline (analytics):** `cleared:false`, `sdted:false`, `severity:"4"|"3"|"2"` (critical / error / warn).
 
