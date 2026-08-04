@@ -68,15 +68,12 @@ Resource Selector already avoided this pattern: it writes correct RP JSON into `
 
 | File | Change |
 | --- | --- |
-| [`_extracted/severity_script_0.js`](_extracted/severity_script_0.js) | Full Severity analytics rewrite (filters + concurrency) |
-| [`_extracted/fw_script_0.js`](_extracted/fw_script_0.js) | Bounded `warmDeviceCache` + shared device cache write |
-| [`Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json`](Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json) | Primary dark dashboard — Severity + Resource Selector embedded |
-| [`Alert_Dashboard___Operations.json`](Alert_Dashboard___Operations.json) | Same logic embedded |
-| [`Dashboards/_LM_Alert_Dashboard_SevOne_Style.json`](Dashboards/_LM_Alert_Dashboard_SevOne_Style.json) | Packaged dashboard — same logic embedded |
-| [`Dashboards/_FilterWidget_v7.json`](Dashboards/_FilterWidget_v7.json) | Bounded device warm concurrency |
-| `_extracted/*Severity*.html`, `_extracted/*Resource_Selector.html` | Extracted HTML mirrors updated |
-| [`_extracted/sync_embed.js`](_extracted/sync_embed.js) | Helper to re-embed scripts into JSON |
-| [`_extracted/test_filter_helpers.js`](_extracted/test_filter_helpers.js) | Offline filter helper tests |
+| [`src/severity_script_0.js`](../src/severity_script_0.js) | Full Severity analytics rewrite (filters + concurrency) |
+| [`src/fw_script_0.js`](../src/fw_script_0.js) | Bounded `warmDeviceCache` + shared device cache write |
+| [`import/Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json`](../import/Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json) | **Only** dashboard JSON to import |
+| [`src/widgets/*`](../src/widgets/) | HTML mirrors for Dark v1 widgets |
+| [`src/sync_embed.js`](../src/sync_embed.js) | Re-embeds scripts into the import JSON |
+| [`src/test_filter_helpers.js`](../src/test_filter_helpers.js) | Offline filter helper tests |
 
 ---
 
@@ -161,7 +158,7 @@ GET /santaba/rest/alert/alerts?...&filter=
 
 ## Test results
 
-### Offline helper tests (`node _extracted/test_filter_helpers.js`)
+### Offline helper tests (`node src/test_filter_helpers.js`)
 
 | Scenario | Result |
 | --- | --- |

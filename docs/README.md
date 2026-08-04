@@ -2,7 +2,7 @@
 
 LogicMonitor operational alert dashboard inspired by the SevOne Alert Dashboard reference. Provides global resource filtering, severity KPIs, distribution charts, a geo status map, and a native active-alert table.
 
-**Import file:** [`_LM_Alert_Dashboard_SevOne_Style.json`](_LM_Alert_Dashboard_SevOne_Style.json)
+**Import file (only):** [`../import/Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json`](../import/Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json)
 
 **Dashboard name:** `Alert Dashboard | Operations`  
 **Description:** Operational overview of active alerts, severity distribution, affected resources, and geographical status.
