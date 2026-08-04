@@ -60,7 +60,7 @@ Themes use `newBorderGray` for a compact operational look. Map tokens include `M
 1. FilterWidget writes LogicMonitor native resource-property filters into the dashboard URL (`?filters=`).
 2. Native widgets (alert table) automatically respect those RP filters after reload.
 3. Custom analytics parse the same URL parameter and translate it into `/alert/alerts` (and `/device/devices` when needed).
-   Severity loads faster by: bounded parallel pagination (`CONCURRENCY=3`), chunked `monitorObjectName` queries when many devices match (avoids downloading the full alert set), progressive KPI render, and a short-lived device-name cache. FilterWidget behavior matches the previous working Operations dashboard and is not modified by `sync_embed.js`.
+   Severity loads faster by: bounded parallel pagination (`CONCURRENCY=3`), chunked `monitorObjectName` queries when many devices match (avoids downloading the full alert set), progressive KPI render with an explicit **in-progress / partial** banner, and a short-lived device-name cache. FilterWidget behavior matches the previous working Operations dashboard and is not modified by `sync_embed.js`.
 4. The map reads the URL and applies Device Groups (path) and Devices (resource marker filter); other metadata filters show an explicit banner.
 
 FilterWidget v7 features preserved: cascading options, searchable multi-select, Apply/Reset, tags, URL persistence, shareable URLs, presets, API cache, configuration wizard, sentinel markers, self-update, localStorage fallback.

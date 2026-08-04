@@ -477,7 +477,8 @@
     }).join('') + '</div>';
   }
 
-  function render(agg, meta) {
+  function render(agg, meta, opts) {
+    opts = opts || {};
     document.getElementById('aaTotal').textContent = String(agg.total);
     document.getElementById('aaCrit').textContent = String(agg.counts.critical || 0);
     document.getElementById('aaErrorCnt').textContent = String(agg.counts.error || 0);
@@ -485,17 +486,68 @@
     document.getElementById('aaDonut').innerHTML = donutSvg(agg.counts, agg.total);
     document.getElementById('aaSources').innerHTML = pieLikeBars(agg.sources, '#2f81f7');
     document.getElementById('aaResources').innerHTML = pieLikeBars(agg.resources, '#ff8c00');
-    document.getElementById('aaMeta').textContent = meta;
+    const metaEl = document.getElementById('aaMeta');
+    metaEl.textContent = meta;
+    if (opts.partial) metaEl.classList.add('is-loading');
+    else metaEl.classList.remove('is-loading');
+
     const tw = document.getElementById('aaTruncWarn');
-    if (meta.indexOf('truncated') >= 0) {
+    if (!opts.partial && meta.indexOf('truncated') >= 0) {
       tw.style.display = 'block';
       tw.textContent = 'Results truncated at API pagination limit; counts may be incomplete.';
-    } else {
+    } else if (!opts.partial) {
       tw.style.display = 'none';
     }
   }
 
+  /** Show / update / hide the in-progress banner and partial styling. */
+  function setLoadingState(state) {
+    // state: { active, message, partial, percent } percent 0-100 or null for indeterminate
+    const progress = document.getElementById('aaProgress');
+    const msg = document.getElementById('aaProgressMsg');
+    const bar = document.getElementById('aaProgressBar');
+    const kpis = document.getElementById('aaKpis');
+    const charts = document.getElementById('aaCharts');
+    const metaEl = document.getElementById('aaMeta');
+    if (!progress) return;
+
+    if (!state || !state.active) {
+      progress.classList.remove('is-visible');
+      if (kpis) kpis.classList.remove('is-partial');
+      if (charts) charts.classList.remove('is-partial');
+      if (metaEl) metaEl.classList.remove('is-loading');
+      if (bar) {
+        bar.classList.remove('is-determinate');
+        bar.style.width = '35%';
+      }
+      return;
+    }
+
+    progress.classList.add('is-visible');
+    if (msg) msg.textContent = state.message || 'Loading alerts…';
+    if (kpis) {
+      if (state.partial) kpis.classList.add('is-partial');
+      else kpis.classList.remove('is-partial');
+    }
+    if (charts) {
+      if (state.partial) charts.classList.add('is-partial');
+      else charts.classList.remove('is-partial');
+    }
+    if (metaEl) metaEl.classList.add('is-loading');
+
+    if (bar) {
+      if (typeof state.percent === 'number' && state.percent >= 0) {
+        bar.classList.add('is-determinate');
+        bar.style.width = Math.max(4, Math.min(100, state.percent)) + '%';
+      } else {
+        bar.classList.remove('is-determinate');
+        bar.style.width = '35%';
+      }
+    }
+  }
+
   function setError(msg) {
+    setLoadingState({ active: false });
     const el = document.getElementById('aaError');
     el.style.display = 'block';
     el.textContent = msg;
@@ -514,7 +566,14 @@
   async function load(force) {
     const gen = ++loadGeneration;
     clearError();
-    document.getElementById('aaMeta').textContent = 'Refreshing…';
+    setLoadingState({
+      active: true,
+      partial: false,
+      message: 'Resolving filters and loading alerts…',
+      percent: null
+    });
+    document.getElementById('aaMeta').textContent = 'Loading…';
+    document.getElementById('aaMeta').classList.add('is-loading');
     const t0 = Date.now();
     try {
       const urlFilters = parseFiltersFromURL();
@@ -526,29 +585,57 @@
             const cached = JSON.parse(raw);
             if (cached && cached.ts && (Date.now() - cached.ts) < CACHE_TTL_MS) {
               if (gen !== loadGeneration) return;
-              render(cached.agg, 'Cached · last refresh ' + new Date(cached.ts).toLocaleTimeString() + (cached.truncated ? ' · truncated' : ''));
+              setLoadingState({ active: false });
+              render(cached.agg, 'Cached · last refresh ' + new Date(cached.ts).toLocaleTimeString() + (cached.truncated ? ' · truncated' : ''), { partial: false });
               return;
             }
           }
         } catch (e) { /* ignore cache */ }
       }
 
+      setLoadingState({
+        active: true,
+        partial: false,
+        message: 'Resolving matching resources…',
+        percent: null
+      });
       const resolved = await resolveDeviceNames(urlFilters);
       if (gen !== loadGeneration) return;
 
       const deviceNames = resolved.names; // null = unscoped; [] = no match; [...] = scoped
       if (Array.isArray(deviceNames) && deviceNames.length === 0) {
+        setLoadingState({ active: false });
         const emptyAgg = { total: 0, counts: { critical: 0, error: 0, warn: 0 }, sources: [], resources: [] };
-        render(emptyAgg, 'No matching resources');
+        render(emptyAgg, 'No matching resources', { partial: false });
         document.getElementById('aaError').style.display = 'block';
         document.getElementById('aaError').textContent = 'No matching resources found for the selected filters.';
         return;
       }
 
+      const nameCount = Array.isArray(deviceNames) ? deviceNames.length : 0;
+      setLoadingState({
+        active: true,
+        partial: false,
+        message: nameCount
+          ? ('Fetching alerts for ' + nameCount + ' resource' + (nameCount === 1 ? '' : 's') + '…')
+          : 'Fetching active alerts…',
+        percent: null
+      });
+
       const result = await fetchAllAlerts(urlFilters, deviceNames, function (partial) {
         if (gen !== loadGeneration) return;
         const aggPartial = aggregate(partial.alerts);
-        render(aggPartial, 'Loading… ' + partial.alerts.length + ' alerts so far');
+        const reported = partial.reportedTotal || 0;
+        const loaded = partial.alerts.length;
+        let pct = null;
+        let msg = 'Partial results — ' + loaded.toLocaleString() + ' alerts loaded so far. Updating…';
+        if (reported > loaded) {
+          pct = Math.min(99, Math.round((loaded / reported) * 100));
+          msg = 'Partial results — ' + loaded.toLocaleString() + ' of ~' + reported.toLocaleString() +
+            ' alerts (' + pct + '%). Counts will update…';
+        }
+        setLoadingState({ active: true, partial: true, message: msg, percent: pct });
+        render(aggPartial, 'Updating… ' + loaded.toLocaleString() + ' alerts (partial)', { partial: true });
       });
       if (gen !== loadGeneration) return;
 
@@ -561,21 +648,30 @@
       const meta = 'Last refresh ' + new Date(ts).toLocaleTimeString() +
         (result.truncated ? ' · truncated' : '') +
         ' · ' + result.alerts.length + ' alerts · ' + elapsed + 'ms';
-      render(agg, meta);
+      setLoadingState({ active: false });
+      render(agg, meta, { partial: false });
     } catch (err) {
       if (gen !== loadGeneration) return;
+      setLoadingState({ active: false });
       var msg = (err && err.message) ? err.message : String(err);
       if (/invalid filter|API 400/i.test(msg)) {
         msg = 'Unable to apply the current filters. Try Reset, or pick a different category/value.';
       }
       setError(msg);
       document.getElementById('aaMeta').textContent = 'Error';
+      document.getElementById('aaMeta').classList.remove('is-loading');
       document.getElementById('aaDonut').innerHTML = '<div class="aa-empty">Unavailable</div>';
       document.getElementById('aaSources').innerHTML = '<div class="aa-empty">Unavailable</div>';
       document.getElementById('aaResources').innerHTML = '<div class="aa-empty">Unavailable</div>';
     }
   }
 
+  setLoadingState({
+    active: true,
+    partial: false,
+    message: 'Loading severity breakdown…',
+    percent: null
+  });
   document.getElementById('aaDonut').innerHTML = '<div class="aa-loading">Loading severity distribution…</div>';
   document.getElementById('aaSources').innerHTML = '<div class="aa-loading">Loading…</div>';
   document.getElementById('aaResources').innerHTML = '<div class="aa-loading">Loading…</div>';

@@ -69,6 +69,7 @@ FilterWidget is left on the **working previous** implementation (do not regress 
 - **`mapPool` with `CONCURRENCY = 3`** for `/device/devices` and `/alert/alerts` pagination after page 0.
 - **Chunked `monitorObjectName` queries** (`NAME_CHUNK = 20`): when a category matches many devices, Severity runs parallel scoped alert queries instead of downloading the global alert set and filtering in the browser (main cause of ~20s loads).
 - **Progressive render:** KPIs/charts update after the first alert page, then refine.
+- **In-progress UX:** spinner + progress banner (“Partial results — N of ~M…”) while pages load; KPI cards marked **partial** and dimmed until the final render so the first 1k alerts are not mistaken for finished totals.
 - **Device-name cache** in `sessionStorage` (`lmDashDeviceNameCache_v1`, 10 min) keyed by the device filter expression.
 - **Slimmer device fields:** `id,name,displayName` only when resolving names (properties already applied via API filter).
 - **Load generation** so overlapping refreshes do not overwrite newer results.

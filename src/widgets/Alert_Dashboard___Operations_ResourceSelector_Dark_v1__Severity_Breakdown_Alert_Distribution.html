@@ -3,9 +3,20 @@
 .aa-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:12px;}
 .aa-title{font-size:13px;font-weight:700;color:#d1d5db;letter-spacing:.03em;text-transform:uppercase;}
 .aa-meta{font-size:11px;color:#8b949e;}
+.aa-meta.is-loading{color:#7dd3fc;}
 .aa-warn{font-size:11px;color:#f5ca1d;margin:0 0 8px;}
 .aa-err{font-size:12px;color:#ff8a80;background:#3b1d1d;border:1px solid #7f2a2a;padding:8px 10px;border-radius:4px;}
+.aa-progress{display:none;align-items:center;gap:10px;margin:0 0 10px;padding:8px 10px;border-radius:4px;border:1px solid #1e3a5f;background:#152033;color:#b6d4f0;font-size:12px;}
+.aa-progress.is-visible{display:flex;}
+.aa-progress-spinner{width:14px;height:14px;border:2px solid rgba(125,211,252,.25);border-top-color:#7dd3fc;border-radius:50%;flex:0 0 auto;animation:aa-spin .7s linear infinite;}
+.aa-progress-track{flex:1;height:4px;background:#243044;border-radius:2px;overflow:hidden;min-width:80px;}
+.aa-progress-bar{height:100%;width:35%;background:linear-gradient(90deg,#38bdf8,#7dd3fc,#38bdf8);background-size:200% 100%;border-radius:2px;animation:aa-indeterminate 1.2s ease-in-out infinite;}
+.aa-progress-bar.is-determinate{animation:none;background:#38bdf8;transition:width .25s ease;}
+@keyframes aa-spin{to{transform:rotate(360deg);}}
+@keyframes aa-indeterminate{0%{transform:translateX(-120%);}100%{transform:translateX(320%);}}
 .aa-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.aa-kpis.is-partial .aa-card{opacity:.72;position:relative;}
+.aa-kpis.is-partial .aa-card::after{content:"partial";position:absolute;top:6px;right:8px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.75;}
 .aa-card{border-radius:4px;padding:14px 16px;border:1px solid #3a3f46;min-height:72px;display:flex;flex-direction:column;justify-content:center;}
 .aa-card .lbl{font-size:12px;font-weight:600;opacity:.9;margin-bottom:6px;}
 .aa-card .val{font-size:28px;font-weight:700;line-height:1;}
@@ -14,6 +25,7 @@
 .aa-errc{background:#ff8c00;color:#111;}
 .aa-warnc{background:#f5ca1d;color:#111;}
 .aa-charts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.aa-charts.is-partial .aa-panel{opacity:.8;}
 .aa-panel{background:#1b1f24;border:1px solid #3a3f46;border-radius:4px;padding:10px 12px;min-height:220px;}
 .aa-panel h3{margin:0 0 8px;font-size:12px;font-weight:700;color:#c8cdd3;text-transform:uppercase;letter-spacing:.03em;}
 .aa-panel-body{display:flex;gap:10px;align-items:center;justify-content:center;min-height:180px;}
@@ -29,7 +41,7 @@
 .aa-empty{color:#8b949e;font-size:12px;text-align:center;padding:24px 8px;}
 .aa-loading{color:#8b949e;font-size:12px;padding:20px;text-align:center;}
 @media(max-width:1100px){.aa-charts{grid-template-columns:1fr;}.aa-kpis{grid-template-columns:repeat(2,1fr);}}
-</style><div class="aa-root" id="aaRoot"><div class="aa-head"><div class="aa-title">Severity Breakdown</div><div class="aa-meta" id="aaMeta">Loading&hellip;</div></div><div id="aaTruncWarn" class="aa-warn" style="display:none;"><br></div><div id="aaError" class="aa-err" style="display:none;"><br></div><div class="aa-kpis" id="aaKpis"><div class="aa-card aa-total"><div class="lbl">Total Active Alerts</div><div class="val" id="aaTotal">&mdash;</div></div><div class="aa-card aa-crit"><div class="lbl">Critical</div><div class="val" id="aaCrit">&mdash;</div></div><div class="aa-card aa-errc"><div class="lbl">Error</div><div class="val" id="aaErrorCnt">&mdash;</div></div><div class="aa-card aa-warnc"><div class="lbl">Warning</div><div class="val" id="aaWarn">&mdash;</div></div></div><div class="aa-title" style="margin:4px 0 8px;">Alert Distribution</div><div class="aa-charts"><div class="aa-panel"><h3>Severity Distribution</h3><div class="aa-panel-body" id="aaDonut"><br></div></div><div class="aa-panel"><h3>Top Alert Sources</h3><div class="aa-panel-body" id="aaSources"><br></div></div><div class="aa-panel"><h3>Top Resources by Alert Count</h3><div class="aa-panel-body" id="aaResources"><br></div></div></div></div><script>
+</style><div class="aa-root" id="aaRoot"><div class="aa-head"><div class="aa-title">Severity Breakdown</div><div class="aa-meta" id="aaMeta">Loading&hellip;</div></div><div id="aaProgress" class="aa-progress" aria-live="polite"><span class="aa-progress-spinner" aria-hidden="true"></span><div class="aa-progress-msg" id="aaProgressMsg">Loading alerts…</div><div class="aa-progress-track" aria-hidden="true"><div class="aa-progress-bar" id="aaProgressBar"></div></div></div><div id="aaTruncWarn" class="aa-warn" style="display:none;"><br></div><div id="aaError" class="aa-err" style="display:none;"><br></div><div class="aa-kpis" id="aaKpis"><div class="aa-card aa-total"><div class="lbl">Total Active Alerts</div><div class="val" id="aaTotal">&mdash;</div></div><div class="aa-card aa-crit"><div class="lbl">Critical</div><div class="val" id="aaCrit">&mdash;</div></div><div class="aa-card aa-errc"><div class="lbl">Error</div><div class="val" id="aaErrorCnt">&mdash;</div></div><div class="aa-card aa-warnc"><div class="lbl">Warning</div><div class="val" id="aaWarn">&mdash;</div></div></div><div class="aa-title" style="margin:4px 0 8px;">Alert Distribution</div><div class="aa-charts" id="aaCharts"><div class="aa-panel"><h3>Severity Distribution</h3><div class="aa-panel-body" id="aaDonut"><br></div></div><div class="aa-panel"><h3>Top Alert Sources</h3><div class="aa-panel-body" id="aaSources"><br></div></div><div class="aa-panel"><h3>Top Resources by Alert Count</h3><div class="aa-panel-body" id="aaResources"><br></div></div></div></div><script>
 (function () {
   /* Severity Breakdown — keep working filter semantics; speed up load:
    * - Bounded parallel device/alert pagination (CONCURRENCY)
@@ -509,7 +521,8 @@
     }).join('') + '</div>';
   }
 
-  function render(agg, meta) {
+  function render(agg, meta, opts) {
+    opts = opts || {};
     document.getElementById('aaTotal').textContent = String(agg.total);
     document.getElementById('aaCrit').textContent = String(agg.counts.critical || 0);
     document.getElementById('aaErrorCnt').textContent = String(agg.counts.error || 0);
@@ -517,17 +530,68 @@
     document.getElementById('aaDonut').innerHTML = donutSvg(agg.counts, agg.total);
     document.getElementById('aaSources').innerHTML = pieLikeBars(agg.sources, '#2f81f7');
     document.getElementById('aaResources').innerHTML = pieLikeBars(agg.resources, '#ff8c00');
-    document.getElementById('aaMeta').textContent = meta;
+    const metaEl = document.getElementById('aaMeta');
+    metaEl.textContent = meta;
+    if (opts.partial) metaEl.classList.add('is-loading');
+    else metaEl.classList.remove('is-loading');
+
     const tw = document.getElementById('aaTruncWarn');
-    if (meta.indexOf('truncated') >= 0) {
+    if (!opts.partial && meta.indexOf('truncated') >= 0) {
       tw.style.display = 'block';
       tw.textContent = 'Results truncated at API pagination limit; counts may be incomplete.';
-    } else {
+    } else if (!opts.partial) {
       tw.style.display = 'none';
     }
   }
 
+  /** Show / update / hide the in-progress banner and partial styling. */
+  function setLoadingState(state) {
+    // state: { active, message, partial, percent } percent 0-100 or null for indeterminate
+    const progress = document.getElementById('aaProgress');
+    const msg = document.getElementById('aaProgressMsg');
+    const bar = document.getElementById('aaProgressBar');
+    const kpis = document.getElementById('aaKpis');
+    const charts = document.getElementById('aaCharts');
+    const metaEl = document.getElementById('aaMeta');
+    if (!progress) return;
+
+    if (!state || !state.active) {
+      progress.classList.remove('is-visible');
+      if (kpis) kpis.classList.remove('is-partial');
+      if (charts) charts.classList.remove('is-partial');
+      if (metaEl) metaEl.classList.remove('is-loading');
+      if (bar) {
+        bar.classList.remove('is-determinate');
+        bar.style.width = '35%';
+      }
+      return;
+    }
+
+    progress.classList.add('is-visible');
+    if (msg) msg.textContent = state.message || 'Loading alerts…';
+    if (kpis) {
+      if (state.partial) kpis.classList.add('is-partial');
+      else kpis.classList.remove('is-partial');
+    }
+    if (charts) {
+      if (state.partial) charts.classList.add('is-partial');
+      else charts.classList.remove('is-partial');
+    }
+    if (metaEl) metaEl.classList.add('is-loading');
+
+    if (bar) {
+      if (typeof state.percent === 'number' && state.percent >= 0) {
+        bar.classList.add('is-determinate');
+        bar.style.width = Math.max(4, Math.min(100, state.percent)) + '%';
+      } else {
+        bar.classList.remove('is-determinate');
+        bar.style.width = '35%';
+      }
+    }
+  }
+
   function setError(msg) {
+    setLoadingState({ active: false });
     const el = document.getElementById('aaError');
     el.style.display = 'block';
     el.textContent = msg;
@@ -546,7 +610,14 @@
   async function load(force) {
     const gen = ++loadGeneration;
     clearError();
-    document.getElementById('aaMeta').textContent = 'Refreshing…';
+    setLoadingState({
+      active: true,
+      partial: false,
+      message: 'Resolving filters and loading alerts…',
+      percent: null
+    });
+    document.getElementById('aaMeta').textContent = 'Loading…';
+    document.getElementById('aaMeta').classList.add('is-loading');
     const t0 = Date.now();
     try {
       const urlFilters = parseFiltersFromURL();
@@ -558,29 +629,57 @@
             const cached = JSON.parse(raw);
             if (cached && cached.ts && (Date.now() - cached.ts) < CACHE_TTL_MS) {
               if (gen !== loadGeneration) return;
-              render(cached.agg, 'Cached · last refresh ' + new Date(cached.ts).toLocaleTimeString() + (cached.truncated ? ' · truncated' : ''));
+              setLoadingState({ active: false });
+              render(cached.agg, 'Cached · last refresh ' + new Date(cached.ts).toLocaleTimeString() + (cached.truncated ? ' · truncated' : ''), { partial: false });
               return;
             }
           }
         } catch (e) { /* ignore cache */ }
       }
 
+      setLoadingState({
+        active: true,
+        partial: false,
+        message: 'Resolving matching resources…',
+        percent: null
+      });
       const resolved = await resolveDeviceNames(urlFilters);
       if (gen !== loadGeneration) return;
 
       const deviceNames = resolved.names; // null = unscoped; [] = no match; [...] = scoped
       if (Array.isArray(deviceNames) && deviceNames.length === 0) {
+        setLoadingState({ active: false });
         const emptyAgg = { total: 0, counts: { critical: 0, error: 0, warn: 0 }, sources: [], resources: [] };
-        render(emptyAgg, 'No matching resources');
+        render(emptyAgg, 'No matching resources', { partial: false });
         document.getElementById('aaError').style.display = 'block';
         document.getElementById('aaError').textContent = 'No matching resources found for the selected filters.';
         return;
       }
 
+      const nameCount = Array.isArray(deviceNames) ? deviceNames.length : 0;
+      setLoadingState({
+        active: true,
+        partial: false,
+        message: nameCount
+          ? ('Fetching alerts for ' + nameCount + ' resource' + (nameCount === 1 ? '' : 's') + '…')
+          : 'Fetching active alerts…',
+        percent: null
+      });
+
       const result = await fetchAllAlerts(urlFilters, deviceNames, function (partial) {
         if (gen !== loadGeneration) return;
         const aggPartial = aggregate(partial.alerts);
-        render(aggPartial, 'Loading… ' + partial.alerts.length + ' alerts so far');
+        const reported = partial.reportedTotal || 0;
+        const loaded = partial.alerts.length;
+        let pct = null;
+        let msg = 'Partial results — ' + loaded.toLocaleString() + ' alerts loaded so far. Updating…';
+        if (reported > loaded) {
+          pct = Math.min(99, Math.round((loaded / reported) * 100));
+          msg = 'Partial results — ' + loaded.toLocaleString() + ' of ~' + reported.toLocaleString() +
+            ' alerts (' + pct + '%). Counts will update…';
+        }
+        setLoadingState({ active: true, partial: true, message: msg, percent: pct });
+        render(aggPartial, 'Updating… ' + loaded.toLocaleString() + ' alerts (partial)', { partial: true });
       });
       if (gen !== loadGeneration) return;
 
@@ -593,21 +692,30 @@
       const meta = 'Last refresh ' + new Date(ts).toLocaleTimeString() +
         (result.truncated ? ' · truncated' : '') +
         ' · ' + result.alerts.length + ' alerts · ' + elapsed + 'ms';
-      render(agg, meta);
+      setLoadingState({ active: false });
+      render(agg, meta, { partial: false });
     } catch (err) {
       if (gen !== loadGeneration) return;
+      setLoadingState({ active: false });
       var msg = (err && err.message) ? err.message : String(err);
       if (/invalid filter|API 400/i.test(msg)) {
         msg = 'Unable to apply the current filters. Try Reset, or pick a different category/value.';
       }
       setError(msg);
       document.getElementById('aaMeta').textContent = 'Error';
+      document.getElementById('aaMeta').classList.remove('is-loading');
       document.getElementById('aaDonut').innerHTML = '<div class="aa-empty">Unavailable</div>';
       document.getElementById('aaSources').innerHTML = '<div class="aa-empty">Unavailable</div>';
       document.getElementById('aaResources').innerHTML = '<div class="aa-empty">Unavailable</div>';
     }
   }
 
+  setLoadingState({
+    active: true,
+    partial: false,
+    message: 'Loading severity breakdown…',
+    percent: null
+  });
   document.getElementById('aaDonut').innerHTML = '<div class="aa-loading">Loading severity distribution…</div>';
   document.getElementById('aaSources').innerHTML = '<div class="aa-loading">Loading…</div>';
   document.getElementById('aaResources').innerHTML = '<div class="aa-loading">Loading…</div>';
