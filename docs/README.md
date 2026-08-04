@@ -17,7 +17,7 @@ LogicMonitor operational alert dashboard inspired by the SevOne Alert Dashboard 
 | Device Groups | `system.groups` | Full group paths; glob `${value}*` for descendants |
 | Object Groups | `system.categories` | Closest LM resource property; labeled **Object Groups / Categories** |
 | Devices | `system.displayname` | Searchable multi-select |
-| Device Metadata | Separate dropdowns: `customer`, `department`, `device_type`, `location` | Same pattern as FilterWidget v7 CapG defaults |
+| Device Metadata | Support Group Tier, Criticality Tier, Device Type, Location | Support Group Tier unions `support.group.tier1/2/3`; Criticality uses `tech.criticality.tier` |
 | Tabs (Alert Summary / Alert Details / Tree Map) | Visual section labels only | LM text widgets cannot safely implement true tabs; all sections are stacked |
 | Tree Map | Not reproduced on this dashboard | Use the Alerts page header graph (tree map / time series) in the portal |
 | Severity cards (Total / Critical / Warning / Notice) | Custom Text: Total / Critical / Error / Warning | LM severity taxonomy (no SevOne “Notice”) |
@@ -50,8 +50,8 @@ Themes use `newBorderGray` for a compact operational look. Map tokens include `M
 | Device Groups | `system.groups` | Yes | `*` | `${value}*` (descendants) |
 | Object Groups / Categories | `system.categories` | Yes | `*` | Exact `${value}` |
 | Devices | `system.displayname` | Yes | `*` | Exact `${value}` |
-| Customer | `customer` | Yes | `*` | Exact |
-| Department | `department` | Yes | `*` | Exact |
+| Support Group Tier | `support.group.tier1` + `tier2` + `tier3` (union) | Yes | `*` | Any-property match; Apply expands to `system.displayname` RP + FW restore chip |
+| Criticality Tier | `tech.criticality.tier` | Yes | `*` | Exact |
 | Device Type | `device_type` | Yes | `*` | Exact |
 | Location | `location` | Yes | `*` | Exact |
 
@@ -60,8 +60,8 @@ Themes use `newBorderGray` for a compact operational look. Map tokens include `M
 1. FilterWidget writes LogicMonitor native resource-property filters into the dashboard URL (`?filters=`).
 2. Native widgets (alert table) automatically respect those RP filters after reload.
 3. Custom analytics parse the same URL parameter and translate it into `/alert/alerts` (and `/device/devices` when needed).
-   Severity loads faster by: bounded parallel pagination (`CONCURRENCY=3`), chunked `monitorObjectName` queries when many devices match (avoids downloading the full alert set), progressive KPI render with an explicit **in-progress / partial** banner, and a short-lived device-name cache. FilterWidget behavior matches the previous working Operations dashboard and is not modified by `sync_embed.js`.
-4. The map reads the URL and applies Device Groups (path) and Devices (resource marker filter); other metadata filters show an explicit banner.
+   Severity loads faster by: bounded parallel pagination (`CONCURRENCY=3`), chunked `monitorObjectName` queries when many devices match (avoids downloading the full alert set), progressive KPI render with an explicit **in-progress / partial** banner, and a short-lived device-name cache. Support Group Tier is expanded to device display names on Apply so native widgets and analytics share the same scope.
+4. The map reads the URL and applies Device Groups (path) and Devices/`system.displayname` (including Support Group Tier expansions); Criticality Tier and other metadata filters show an explicit banner.
 
 FilterWidget v7 features preserved: cascading options, searchable multi-select, Apply/Reset, tags, URL persistence, shareable URLs, presets, API cache, configuration wizard, sentinel markers, self-update, localStorage fallback.
 
@@ -112,8 +112,9 @@ const DEFAULT_FILTER_CONFIG = { ... };
 | --- | --- | --- |
 | Device Groups (`system.groups`) | Yes | Sets `groupPathFilter` with descendant wildcards |
 | Devices (`system.displayname`) | Yes | Switches source to `resources` and filters `/device/devices` responses |
+| Support Group Tier | Yes (via expansion) | Apply writes matching `system.displayname` RP chips the map already honors |
 | Object Groups / Categories | No | Banner message; still applied to table + analytics |
-| Customer / Department / Device Type / Location | No | Banner message; still applied to table + analytics |
+| Criticality Tier / Device Type / Location | No | Banner message; still applied to table + analytics |
 
 ---
 
@@ -133,8 +134,8 @@ Cloned from `_Example_NOC_Dashboard.json` with:
 
 ## Configuration requirements (post-import)
 
-1. **Import** `_LM_Alert_Dashboard_SevOne_Style.json` into the target portal.
-2. Confirm resources have property values used by filters (`customer`, `department`, `device_type`, `location`, `system.categories` as applicable). Empty properties simply yield empty dropdown options.
+1. **Import** `import/Alert_Dashboard___Operations_ResourceSelector_Dark_v1.json` into the target portal.
+2. Confirm resources have property values used by filters (`support.group.tier1/2/3`, `tech.criticality.tier`, `device_type`, `location`, `system.categories` as applicable). Empty properties simply yield empty dropdown options.
 3. Ensure mapped groups/resources have a valid **`location`** property (or latitude/longitude) for map pins.
 4. Optionally set `MapGroupPathFilter` to a tower root (for example a Capgemini folder path) instead of `*`.
 5. Optionally set `MapSourceType` to `resources` if group volume is low and device-level pins are preferred.
@@ -152,7 +153,7 @@ Clone the dashboard per business unit if RBAC or default group roots should diff
 - **SevOne “Notice” severity** — mapped to LogicMonitor **Warning**.
 - **Instant filter-as-you-type dashboard refresh** — FilterWidget requires **Apply** (one extra click), which reloads with URL filters.
 - **Alert API custom-property filters** — `/alert/alerts` does not support arbitrary custom properties; analytics resolve matching devices via `/device/devices` first, then scope alerts.
-- **Map metadata filters** — categories/customer/department/device_type/location are not silently ignored; the map shows a banner and continues with group/device scope only.
+- **Map metadata filters** — categories/criticality/device_type/location are not silently ignored; the map shows a banner and continues with group/device scope only. Support Group Tier is applied via display-name expansion.
 - **Pagination ceiling** — LM alert list offset limit is 10,000; analytics show a truncation warning if hit.
 - **Charts** — SVG/CSS (no Chart.js CDN dependency).
 - **Better Map** remains a custom CDN widget (limited LM Support coverage, as documented upstream).

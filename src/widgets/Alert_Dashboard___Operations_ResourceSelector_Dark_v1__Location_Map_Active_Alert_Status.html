@@ -173,10 +173,14 @@
 		const groups = byProp['system.groups'] || [];
 		const devices = byProp['system.displayname'] || [];
 		const unsupported = [];
-		['system.categories', 'customer', 'department', 'device_type', 'location'].forEach(function (p) {
+		['system.categories', 'tech.criticality.tier', 'device_type', 'location'].forEach(function (p) {
 			const vals = byProp[p] || [];
 			if (vals.length) unsupported.push(p);
 		});
+		// FW Support Group Tier chip alone is not applied by the map; Apply expands it to system.displayname RP.
+		if ((byProp['fw.support_group_tier'] || []).length && !(byProp['system.displayname'] || []).length) {
+			unsupported.push('fw.support_group_tier');
+		}
 
 		if (groups.length) {
 			const paths = groups.map(function (g) {

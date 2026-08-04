@@ -199,11 +199,14 @@
     const displayNames = (byProp['system.displayname'] || []).filter(function (v) { return v && v !== '*'; });
     const metaProps = [
       { n: 'system.categories', system: true },
-      { n: 'customer', system: false },
-      { n: 'department', system: false },
+      { n: 'tech.criticality.tier', system: false },
       { n: 'device_type', system: false },
       { n: 'location', system: false }
     ];
+
+    // Support Group Tier: any of tier1/tier2/tier3 (FW chip). Prefer expanded displayNames when present.
+    const supportTier = (byProp['fw.support_group_tier'] || []).filter(function (v) { return v && v !== '*'; });
+    const supportTierProps = ['support.group.tier1', 'support.group.tier2', 'support.group.tier3'];
 
     const clauses = [];
     metaProps.forEach(function (p) {
@@ -213,6 +216,15 @@
         if (pcs.length) clauses.push(pcs.length === 1 ? pcs[0] : ('(' + pcs.join(' || ') + ')'));
       }
     });
+
+    if (!isAllOrEmpty(supportTier) && !displayNames.length) {
+      const tierClauses = [];
+      supportTierProps.forEach(function (pn) {
+        const pcs = propFilterClause(pn, supportTier, false);
+        pcs.forEach(function (c) { tierClauses.push(c); });
+      });
+      if (tierClauses.length) clauses.push('(' + tierClauses.join(' || ') + ')');
+    }
 
     if (!clauses.length && !displayNames.length) {
       return { names: null, forcedNames: displayNames.length ? displayNames : null };

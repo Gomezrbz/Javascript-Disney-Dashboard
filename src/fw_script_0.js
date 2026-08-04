@@ -59,15 +59,21 @@ const DEFAULT_FILTER_CONFIG = {
 			}
 		},
 		{
-			"id": "customer",
-			"label": "Customer",
-			"placeholder": "Search Customer...",
-			"property": "customer",
+			"id": "support_group_tier",
+			"label": "Support Group Tier",
+			"placeholder": "Search Support Group Tier...",
+			"property": "fw.support_group_tier",
 			"source": "api",
 			"includeAll": true,
 			"allValue": "*",
 			"multiSelect": true,
-			"valuePropertyName": "customer",
+			"valuePropertyNames": [
+				"support.group.tier1",
+				"support.group.tier2",
+				"support.group.tier3"
+			],
+			"matchMode": "anyProperty",
+			"urlExpandMode": "deviceDisplayNames",
 			"globPattern": "${value}",
 			"_wizard": {
 				"extractionPreset": "direct",
@@ -75,15 +81,15 @@ const DEFAULT_FILTER_CONFIG = {
 			}
 		},
 		{
-			"id": "department",
-			"label": "Department",
-			"placeholder": "Search Department...",
-			"property": "department",
+			"id": "criticality_tier",
+			"label": "Criticality Tier",
+			"placeholder": "Search Criticality Tier...",
+			"property": "tech.criticality.tier",
 			"source": "api",
 			"includeAll": true,
 			"allValue": "*",
 			"multiSelect": true,
-			"valuePropertyName": "department",
+			"valuePropertyName": "tech.criticality.tier",
 			"globPattern": "${value}",
 			"_wizard": {
 				"extractionPreset": "direct",
@@ -133,6 +139,87 @@ const DEFAULT_FILTER_CONFIG = {
 
 	// Active configuration (can be overridden by user)
 	let FILTER_CONFIG = JSON.parse(JSON.stringify(DEFAULT_FILTER_CONFIG));
+
+	/** Max device names emitted when urlExpandMode expands a multi-property filter. */
+	const FW_URL_EXPAND_MAX_DEVICES = 500;
+
+	function getValuePropertyNames(filter)
+	{
+		if (!filter) return [];
+		if (Array.isArray(filter.valuePropertyNames) && filter.valuePropertyNames.length)
+		{
+			return filter.valuePropertyNames.filter(function(n) { return !!n; });
+		}
+		if (filter.valuePropertyName) return [filter.valuePropertyName];
+		return [];
+	}
+
+	function findDevicePropertyValue(item, propName)
+	{
+		var _propArrays = ['systemProperties', 'autoProperties', 'customProperties', 'inheritedProperties'];
+		for (var i = 0; i < _propArrays.length; i++)
+		{
+			var arr = item[_propArrays[i]];
+			if (Array.isArray(arr))
+			{
+				var found = arr.find(function(p) { return p.name === propName; });
+				if (found && found.value) return found.value;
+			}
+		}
+		return null;
+	}
+
+	function collectTransformedPropValues(item, filter)
+	{
+		var names = getValuePropertyNames(filter);
+		var out = [];
+		for (var ni = 0; ni < names.length; ni++)
+		{
+			var propVal = findDevicePropertyValue(item, names[ni]);
+			if (!propVal) continue;
+			var vals = filter.delimiter ? propVal.split(filter.delimiter) : [propVal];
+			for (var vi = 0; vi < vals.length; vi++)
+			{
+				var v = vals[vi].trim();
+				if (!v) continue;
+				if (filter.valueFilter && !applyTransform(v, filter.valueFilter)) continue;
+				if (filter.valueTransform) v = applyTransform(v, filter.valueTransform);
+				if (!v) continue;
+				out.push(v);
+			}
+		}
+		return out;
+	}
+
+	function deviceMatchesFilterSelection(item, filter, selectedValues, isExclude)
+	{
+		var propValues = collectTransformedPropValues(item, filter);
+		if (!propValues.length)
+		{
+			return !!isExclude;
+		}
+		if (isExclude)
+		{
+			for (var i = 0; i < propValues.length; i++)
+			{
+				if (selectedValues.indexOf(propValues[i]) !== -1) return false;
+			}
+			return true;
+		}
+		for (var j = 0; j < propValues.length; j++)
+		{
+			if (selectedValues.indexOf(propValues[j]) !== -1) return true;
+		}
+		return false;
+	}
+
+	function getDeviceDisplayName(item)
+	{
+		if (item && item.displayName) return item.displayName;
+		var dn = findDevicePropertyValue(item, 'system.displayname');
+		if (dn) return dn;
+		return item && item.name ? item.name : null;
+	}
 
 	// ============================================================================
 	// API CLIENT
@@ -238,7 +325,7 @@ const DEFAULT_FILTER_CONFIG = {
 	// ============================================================================
 	// API CACHE
 	// ============================================================================
-	const CACHE_VERSION = 'v30-exclude-upstream-cascade'; // Bump this to invalidate stale cache after code changes
+	const CACHE_VERSION = 'v31-support-group-tier'; // Bump this to invalidate stale cache after code changes
 	const apiCache = {
 		data:
 		{},
@@ -353,7 +440,7 @@ const DEFAULT_FILTER_CONFIG = {
 		sharedDeviceCache.clear();
 		var _warmStart = Date.now();
 		var pageSize = (FILTER_CONFIG && FILTER_CONFIG.maxResults) || 1000;
-		var fields = 'id,name,systemProperties,autoProperties,customProperties,inheritedProperties';
+		var fields = 'id,name,displayName,systemProperties,autoProperties,customProperties,inheritedProperties';
 		var baseParams = '?v=3&sort=id&size=' + pageSize + '&fields=' + fields;
 
 		// Step 1: Fetch page 1 to get total count
@@ -1019,7 +1106,8 @@ const DEFAULT_FILTER_CONFIG = {
 		for (var ufi = 0; ufi < filterIndex; ufi++)
 		{
 			var upf = FILTER_CONFIG.filters[ufi];
-			if (upf.source === 'static' || !upf.valuePropertyName) continue;
+			var upNames = getValuePropertyNames(upf);
+			if (upf.source === 'static' || !upNames.length) continue;
 			var upVals = filterState.values[upf.id];
 			if (upVals && Array.isArray(upVals) && upVals.length > 0 && !upVals.some(function(s)
 				{
@@ -1032,7 +1120,8 @@ const DEFAULT_FILTER_CONFIG = {
 				}).sort().join(',');
 			}
 		}
-		var cacheKey = 'filter_' + filter.id + '_' + filter.valuePropertyName + '_' + (filter.valueTransform || '') + '_' + (filter.displayTransform || '') + upstreamFingerprint;
+		var propKey = getValuePropertyNames(filter).join('|') || filter.valuePropertyName || '';
+		var cacheKey = 'filter_' + filter.id + '_' + propKey + '_' + (filter.valueTransform || '') + '_' + (filter.displayTransform || '') + upstreamFingerprint;
 		var cachedData = apiCache.get(cacheKey);
 		if (cachedData) return cachedData;
 
@@ -1045,38 +1134,20 @@ const DEFAULT_FILTER_CONFIG = {
 		var options = [];
 		var seen = {};
 		var matchCount = 0;
-		var _propArrays = ['systemProperties', 'autoProperties', 'customProperties', 'inheritedProperties'];
-
-		// ── Helper: find a property value across all 4 property arrays ──
-		function findProperty(item, propName)
-		{
-			for (var i = 0; i < _propArrays.length; i++)
-			{
-				var arr = item[_propArrays[i]];
-				if (Array.isArray(arr))
-				{
-					var found = arr.find(function(p)
-					{
-						return p.name === propName;
-					});
-					if (found && found.value) return found.value;
-				}
-			}
-			return null;
-		}
 
 		// ── Helper: check if a device matches all visible upstream filter selections ──
 		// Uses the same universal pipeline: split (delimiter) → filter → transform → compare
 		// Skips non-visible filters (hidden by visibleWhen rules) so they don't affect matching
 		// Include mode: device must have at least one transformed value in the selected set
 		// Exclude mode: device must have none of its transformed values in the selected set (excluded values)
+		// matchMode anyProperty (multi valuePropertyNames): match if ANY listed property intersects
 		function deviceMatchesUpstream(item, upToIndex)
 		{
 			for (var ui = 0; ui < upToIndex; ui++)
 			{
 				var uf = FILTER_CONFIG.filters[ui];
 				if (!isFilterVisible(uf.id)) continue;
-				if (uf.source === 'static' || !uf.valuePropertyName) continue;
+				if (uf.source === 'static' || !getValuePropertyNames(uf).length) continue;
 				var sel = filterState.values[uf.id];
 				if (!sel || !Array.isArray(sel) || sel.length === 0) continue;
 				var hasAll = sel.some(function(s)
@@ -1089,72 +1160,23 @@ const DEFAULT_FILTER_CONFIG = {
 					return s.value;
 				});
 				var isExclude = uf.filterMode === 'exclude';
-				var propVal = findProperty(item, uf.valuePropertyName);
-				if (!propVal)
-				{
-					if (isExclude) continue;
-					return false;
-				}
-				var vals = uf.delimiter ? propVal.split(uf.delimiter) : [propVal];
-				if (isExclude)
-				{
-					for (var ve = 0; ve < vals.length; ve++)
-					{
-						var ev = vals[ve].trim();
-						if (!ev) continue;
-						if (uf.valueFilter && !applyTransform(ev, uf.valueFilter)) continue;
-						if (uf.valueTransform) ev = applyTransform(ev, uf.valueTransform);
-						if (selectedValues.indexOf(ev) !== -1) return false;
-					}
-					continue;
-				}
-				var matched = false;
-				for (var vi = 0; vi < vals.length; vi++)
-				{
-					var v = vals[vi].trim();
-					if (!v) continue;
-					if (uf.valueFilter && !applyTransform(v, uf.valueFilter)) continue;
-					if (uf.valueTransform) v = applyTransform(v, uf.valueTransform);
-					if (selectedValues.indexOf(v) !== -1)
-					{
-						matched = true;
-						break;
-					}
-				}
-				if (!matched) return false;
+				if (!deviceMatchesFilterSelection(item, uf, selectedValues, isExclude)) return false;
 			}
 			return true;
 		}
 
 		// Extract unique values from cached devices for this filter
 		// Universal pipeline: split (delimiter) → filter (valueFilter) → transform (valueTransform)
+		// Multi-property filters (valuePropertyNames): union of all non-empty property values
 		sharedDeviceCache.devices.forEach(function(item)
 		{
 			if (!deviceMatchesUpstream(item, filterIndex)) return;
-			var propValue = findProperty(item, filter.valuePropertyName);
-			if (!propValue) return;
+			var propValues = collectTransformedPropValues(item, filter);
+			if (!propValues.length) return;
 			matchCount++;
 
-			// 1. Split: if delimiter is set, split into multiple values; otherwise single value
-			var rawValues = filter.delimiter ? propValue.split(filter.delimiter) : [propValue];
-
-			rawValues.forEach(function(rawVal)
+			propValues.forEach(function(value)
 			{
-				rawVal = rawVal.trim();
-				if (!rawVal) return;
-
-				// 2. Filter: if valueFilter is set, only keep values where expression returns truthy
-				if (filter.valueFilter)
-				{
-					if (!applyTransform(rawVal, filter.valueFilter)) return;
-				}
-
-				// 3. Transform: apply valueTransform to extract/reshape the value
-				var value = rawVal;
-				if (filter.valueTransform) value = applyTransform(value, filter.valueTransform);
-				if (!value) return;
-
-				// 4. Display: apply displayTransform for dropdown label
 				var displayName = value;
 				if (filter.displayTransform) displayName = applyTransform(value, filter.displayTransform);
 				if (displayName && !seen[value])
@@ -1200,20 +1222,15 @@ const DEFAULT_FILTER_CONFIG = {
 		const filters = [];
 		const visibleFilters = getVisibleFilters();
 		const visibleIds = visibleFilters.map(f => f.id);
-		FILTER_CONFIG.filters.forEach((filterConfig, index) =>
+		let expandedDisplayNames = null;
+		let userDeviceNames = null;
+		let userDeviceEntries = null;
+		let expandTruncated = false;
+
+		function makeVEntries(filterConfig, index, stateValues)
 		{
-			if (filterConfig.source === 'static') return;
-			if (visibleIds.indexOf(filterConfig.id) === -1) return;
-			const stateValues = filterState.values[filterConfig.id];
-			if (!stateValues || !Array.isArray(stateValues) || stateValues.length === 0) return;
-			const hasAll = stateValues.some(v => v.name === 'All' || v.value === '*');
-			if (hasAll)
-			{
-				/* Unrestricted: omit property from URL (do not emit blank or wildcard RP conditions) */
-				return;
-			}
 			const isExclude = filterConfig.filterMode === 'exclude';
-			const vEntries = stateValues.map(sv =>
+			return stateValues.map(sv =>
 			{
 				const rawValue = sv.value || sv.name;
 				let filterValue;
@@ -1240,14 +1257,137 @@ const DEFAULT_FILTER_CONFIG = {
 					"isSelected": true
 				};
 			});
+		}
+
+		FILTER_CONFIG.filters.forEach((filterConfig, index) =>
+		{
+			if (filterConfig.source === 'static') return;
+			if (visibleIds.indexOf(filterConfig.id) === -1) return;
+			const stateValues = filterState.values[filterConfig.id];
+			if (!stateValues || !Array.isArray(stateValues) || stateValues.length === 0) return;
+			const hasAll = stateValues.some(v => v.name === 'All' || v.value === '*');
+			if (hasAll)
+			{
+				/* Unrestricted: omit property from URL (do not emit blank or wildcard RP conditions) */
+				return;
+			}
+
+			// Multi-property union → FW restore chip + later system.displayname RP expansion
+			if (filterConfig.urlExpandMode === 'deviceDisplayNames')
+			{
+				const fwEntries = stateValues.map(sv =>
+				{
+					const rawValue = sv.value || sv.name;
+					return {
+						"value": rawValue,
+						"label": rawValue,
+						"isSelected": true
+					};
+				});
+				filters.push({
+					"n": filterConfig.property,
+					"v": fwEntries,
+					"t": "FW"
+				});
+
+				const selectedValues = stateValues.map(sv => sv.value || sv.name);
+				const isExclude = filterConfig.filterMode === 'exclude';
+				const names = [];
+				const seen = {};
+				(sharedDeviceCache.devices || []).forEach(function(item)
+				{
+					if (!deviceMatchesFilterSelection(item, filterConfig, selectedValues, isExclude)) return;
+					const dn = getDeviceDisplayName(item);
+					if (!dn || seen[dn]) return;
+					seen[dn] = true;
+					names.push(dn);
+				});
+				expandedDisplayNames = names;
+				return;
+			}
+
+			// Defer Devices RP until we know whether Support Group Tier expanded names
+			if (filterConfig.property === 'system.displayname')
+			{
+				userDeviceNames = stateValues.map(sv => sv.value || sv.name);
+				userDeviceEntries = makeVEntries(filterConfig, index, stateValues);
+				return;
+			}
+
+			const isExclude = filterConfig.filterMode === 'exclude';
 			const filterEntry = {
 				"n": filterConfig.property,
-				"v": vEntries,
+				"v": makeVEntries(filterConfig, index, stateValues),
 				"t": "RP"
 			};
 			if (isExclude) filterEntry.i = 'e';
 			filters.push(filterEntry);
 		});
+
+		// Merge expanded Support Group Tier devices with explicit Devices selections
+		if (expandedDisplayNames !== null || userDeviceNames !== null)
+		{
+			let finalNames;
+			if (expandedDisplayNames !== null && userDeviceNames !== null)
+			{
+				const allow = {};
+				userDeviceNames.forEach(function(n) { allow[n] = true; });
+				finalNames = expandedDisplayNames.filter(function(n) { return allow[n]; });
+				// Preserve user Devices selection for URL restore (FW chip)
+				filters.push({
+					"n": "system.displayname",
+					"v": userDeviceEntries || userDeviceNames.map(function(n)
+					{
+						return { "value": n, "label": n, "isSelected": true };
+					}),
+					"t": "FW"
+				});
+			}
+			else if (expandedDisplayNames !== null)
+			{
+				finalNames = expandedDisplayNames.slice();
+			}
+			else
+			{
+				finalNames = userDeviceNames.slice();
+			}
+
+			if (finalNames.length > FW_URL_EXPAND_MAX_DEVICES)
+			{
+				finalNames = finalNames.slice(0, FW_URL_EXPAND_MAX_DEVICES);
+				expandTruncated = true;
+			}
+
+			if (finalNames.length)
+			{
+				filters.push({
+					"n": "system.displayname",
+					"v": finalNames.map(function(n)
+					{
+						return {
+							"value": n,
+							"label": n,
+							"isSelected": true
+						};
+					}),
+					"t": "RP"
+				});
+			}
+		}
+
+		if (expandTruncated)
+		{
+			try
+			{
+				showErrorMessage(
+					'Support Group Tier matched more than ' + FW_URL_EXPAND_MAX_DEVICES +
+					' devices; URL filter was truncated. Narrow other filters or selections.',
+					'warning'
+				);
+			}
+			catch (e) { /* status UI may not be ready */ }
+		}
+
 		if (!filters.length) return '';
 		return encodeURIComponent(JSON.stringify(filters));
 	}
@@ -1261,21 +1401,21 @@ const DEFAULT_FILTER_CONFIG = {
 			if (!filtersParam) return null;
 			const filters = JSON.parse(decodeURIComponent(filtersParam));
 			const result = {};
-			filters.forEach(filter =>
+			const hasFwSupportTier = filters.some(function(f)
 			{
-				const urlMode = filter.i === 'e' ? 'exclude' : 'include';
-				const candidates = FILTER_CONFIG.filters.filter(f => f.property === filter.n && f.source !== 'static');
-				if (candidates.length === 0) return;
-				let configFilter = candidates.length === 1 ? candidates[0] : candidates.find(f => isFilterVisible(f.id) && (f.filterMode || 'include') === urlMode) || candidates.find(f => isFilterVisible(f.id)) || candidates[0];
+				return f && f.t === 'FW' && f.n === 'fw.support_group_tier';
+			});
+
+			function mapValuesFromChip(configFilter, filter)
+			{
 				if (filter.v && filter.v.length > 0)
 				{
 					const allUrlValue = buildUrlFilterValueForAllSelect(configFilter);
 					if (filter.v.length === 1 && filter.v[0].value != null && filter.v[0].value === allUrlValue)
 					{
-						result[configFilter.id] = ['All'];
-						return;
+						return ['All'];
 					}
-					const values = filter.v.map(entry =>
+					return filter.v.map(entry =>
 					{
 						let value = entry.value;
 						if (value.endsWith('*')) value = value.slice(0, -1);
@@ -1296,12 +1436,39 @@ const DEFAULT_FILTER_CONFIG = {
 						}
 						return value;
 					});
-					result[configFilter.id] = values;
 				}
-				else
+				return ['All'];
+			}
+
+			filters.forEach(filter =>
+			{
+				if (!filter || !filter.n) return;
+
+				// FW restore chips (Support Group Tier, optional Devices selection)
+				if (filter.t === 'FW')
 				{
-					result[configFilter.id] = ['All'];
+					let configFilter = FILTER_CONFIG.filters.find(f => f.property === filter.n && f.source !== 'static');
+					if (!configFilter && filter.n === 'system.displayname')
+					{
+						configFilter = FILTER_CONFIG.filters.find(f => f.id === 'devices');
+					}
+					if (!configFilter) return;
+					result[configFilter.id] = mapValuesFromChip(configFilter, filter);
+					return;
 				}
+
+				// Skip expansion-artifact displayName RP when Support Group Tier FW chip is present
+				// (Devices restored from FW system.displayname chip when user also selected devices)
+				if (hasFwSupportTier && filter.n === 'system.displayname' && filter.t === 'RP')
+				{
+					return;
+				}
+
+				const urlMode = filter.i === 'e' ? 'exclude' : 'include';
+				const candidates = FILTER_CONFIG.filters.filter(f => f.property === filter.n && f.source !== 'static');
+				if (candidates.length === 0) return;
+				let configFilter = candidates.length === 1 ? candidates[0] : candidates.find(f => isFilterVisible(f.id) && (f.filterMode || 'include') === urlMode) || candidates.find(f => isFilterVisible(f.id)) || candidates[0];
+				result[configFilter.id] = mapValuesFromChip(configFilter, filter);
 			});
 			return result;
 		}
@@ -2245,6 +2412,9 @@ function reverseEngineerFilter(f) {
 		source: f.source || 'api',
 		property: f.property || '',
 		valuePropertyName: f.valuePropertyName || '',
+		valuePropertyNames: Array.isArray(f.valuePropertyNames) ? f.valuePropertyNames.slice() : null,
+		matchMode: f.matchMode || null,
+		urlExpandMode: f.urlExpandMode || null,
 		staticOptions: f.staticOptions ? [...f.staticOptions] : [],
 		includeAll: f.includeAll !== false,
 		allValue: f.allValue || '*',
@@ -3314,6 +3484,11 @@ function generateRuntimeConfig() {
 
 		if (f.source === 'api') {
 			if (f.valuePropertyName) runtime.valuePropertyName = f.valuePropertyName;
+			if (Array.isArray(f.valuePropertyNames) && f.valuePropertyNames.length) {
+				runtime.valuePropertyNames = f.valuePropertyNames.slice();
+			}
+			if (f.matchMode) runtime.matchMode = f.matchMode;
+			if (f.urlExpandMode) runtime.urlExpandMode = f.urlExpandMode;
 			var ext = buildExtractionFields(f);
 			if (ext.delimiter) runtime.delimiter = ext.delimiter;
 			if (ext.valueFilter) runtime.valueFilter = ext.valueFilter;
