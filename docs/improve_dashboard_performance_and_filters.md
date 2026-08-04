@@ -34,9 +34,19 @@ invalid filter! (systemProperties:{"name":"system.categories","value":"Aruba"})
 errorCode: 1400
 ```
 
-The Severity widget function `propFilterClause` built LogicMonitor device filters as a JSON blob stuffed into `systemProperties:"{...}"` / `customProperties:"{...}"`. That syntax is **not valid** for `/device/devices`.
+Two issues in the old Severity builder:
 
-Resource Selector already avoided this pattern: it writes correct RP JSON into `?filters=` and resolves category options **client-side** from a device cache. The bug was only in Severity’s translation of those URL filters into a device API `filter=` query.
+1. **Exact-match `:`** on `system.categories` — that property is a **comma-separated** multi-value string (e.g. `Aruba,snmpudp,…`). LM advanced filters expect **contains** (`~`) with wildcards (`*Aruba*`) for partial category tokens.
+2. Wrapping a single clause in **parentheses** could also be rejected as an invalid advanced filter.
+
+### Fix (current)
+
+1. Prefer portal `/device/devices` with documented advanced filters:
+   - Categories: `systemProperties~"{\"name\":\"system.categories\",\"value\":\"*Aruba*\"}"`
+   - Custom props: exact `customProperties:"{\"name\":\"customer\",\"value\":\"…\"}"`
+2. Skip empty / `All` / `*` values.
+3. If the API returns **400** or **0 devices**, fall back to unfiltered device pages + **client-side** comma-token matching (same idea as FilterWidget).
+4. Alert scoping still uses `monitorObjectName` / `monitorObjectGroups` as before.
 
 ---
 
@@ -44,13 +54,14 @@ Resource Selector already avoided this pattern: it writes correct RP JSON into `
 
 ### Filter reliability
 
-- Removed `propFilterClause` entirely.
-- Metadata filters (`system.categories`, `customer`, `department`, `device_type`, `location`) are applied by fetching devices **without** property API filters (or from cache) and matching properties in JavaScript (`getDevicePropertyValue` / `deviceMatchesMetaFilters`).
-- Categories support multi-value device properties (comma/space/semicolon separated tokens).
-- Empty, null, undefined, `*`, and **All** values are skipped (`isActiveFilterValue` / `buildActiveUrlFilters`).
-- Zero matches show **“No matching resources found”** instead of an API error.
+- Metadata filters query the portal `/device/devices` with **documented** advanced filter syntax.
+- **Categories** use contains + wildcards: `systemProperties~"{\"name\":\"system.categories\",\"value\":\"*Aruba*\"}"` (not exact `:`).
+- Custom props (`customer`, etc.) use exact `customProperties:"…"`.
+- Empty / null / `All` / `*` values are skipped.
+- On API **400** or zero hits → client-side comma-token match (FilterWidget-compatible fallback).
+- Zero matches show **“No matching resources found”** instead of a raw API error.
 - Alert API filters still use supported fields only: `cleared`, `sdted`, `severity`, `monitorObjectGroups`, `monitorObjectName`.
-- Debug mode (`?debug=1` or `localStorage.lmDashDebug=1`) logs the final alert filter expression and timing metrics (no credentials/tokens).
+- Debug mode (`?debug=1` or `localStorage.lmDashDebug=1`) logs filter expressions and timings (no credentials/tokens).
 
 ### Performance
 
@@ -121,14 +132,15 @@ GET /santaba/rest/alert/alerts?size=1000&offset=0&sort=-startEpoch
 
 ### 2. Category Aruba only
 
-**Device resolve:**
+**Device resolve (portal advanced filter):**
 
 ```http
 GET /santaba/rest/device/devices?size=1000&offset=0
   &fields=id,name,displayName,systemProperties,autoProperties,customProperties,inheritedProperties
+  &filter=systemProperties~"{\"name\":\"system.categories\",\"value\":\"*Aruba*\"}"
 ```
 
-(No `filter=` property clause. Client keeps devices whose `system.categories` contains `Aruba`.)
+If that returns 400 or 0 devices, the widget falls back to unfiltered device pages and matches `system.categories` tokens client-side (comma-split, same as FilterWidget).
 
 **Alert request** (example when ≤20 matching names):
 

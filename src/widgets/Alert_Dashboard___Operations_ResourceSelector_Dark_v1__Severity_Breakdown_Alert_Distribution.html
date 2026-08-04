@@ -32,8 +32,9 @@
 </style><div class="aa-root" id="aaRoot"><div class="aa-head"><div class="aa-title">Severity Breakdown</div><div class="aa-meta" id="aaMeta">Loading&hellip;</div></div><div id="aaTruncWarn" class="aa-warn" style="display:none;"><br></div><div id="aaError" class="aa-err" style="display:none;"><br></div><div class="aa-kpis" id="aaKpis"><div class="aa-card aa-total"><div class="lbl">Total Active Alerts</div><div class="val" id="aaTotal">&mdash;</div></div><div class="aa-card aa-crit"><div class="lbl">Critical</div><div class="val" id="aaCrit">&mdash;</div></div><div class="aa-card aa-errc"><div class="lbl">Error</div><div class="val" id="aaErrorCnt">&mdash;</div></div><div class="aa-card aa-warnc"><div class="lbl">Warning</div><div class="val" id="aaWarn">&mdash;</div></div></div><div class="aa-title" style="margin:4px 0 8px;">Alert Distribution</div><div class="aa-charts"><div class="aa-panel"><h3>Severity Distribution</h3><div class="aa-panel-body" id="aaDonut"><br></div></div><div class="aa-panel"><h3>Top Alert Sources</h3><div class="aa-panel-body" id="aaSources"><br></div></div><div class="aa-panel"><h3>Top Resources by Alert Count</h3><div class="aa-panel-body" id="aaResources"><br></div></div></div></div><script>
 (function () {
   /* Severity Breakdown & Alert Distribution — performance + filter reliability
-   * - Never send invalid systemProperties/customProperties JSON blobs to /device/devices
-   * - Resolve category/metadata filters client-side (same approach as FilterWidget)
+   * - Metadata filters use LM advanced device filters (portal), with a safe syntax:
+   *   categories use contains (~) + *value* (multi-token props); no wrapping () that LM rejects
+   * - On API 400 / empty, fall back to unfiltered device pages + client-side match (FilterWidget style)
    * - Bounded parallel pagination (CONCURRENCY), progressive render, retries, AbortController
    */
   const CACHE_KEY = 'lmAlertDashAnalytics_v1';
@@ -49,12 +50,13 @@
   const MAX_RETRIES = 3;
   const SEV_COLORS = { critical: '#e0351b', error: '#ff8c00', warn: '#f5ca1d' };
   const SEV_LABELS = { critical: 'Critical', error: 'Error', warn: 'Warning' };
+  // system:true → systemProperties; contains:true → ~"*value*" (needed for system.categories)
   const META_PROPS = [
-    { n: 'system.categories', multi: true },
-    { n: 'customer', multi: false },
-    { n: 'department', multi: false },
-    { n: 'device_type', multi: false },
-    { n: 'location', multi: false }
+    { n: 'system.categories', system: true, contains: true },
+    { n: 'customer', system: false, contains: false },
+    { n: 'department', system: false, contains: false },
+    { n: 'device_type', system: false, contains: false },
+    { n: 'location', system: false, contains: false }
   ];
   const PROP_ARRAYS = ['systemProperties', 'autoProperties', 'customProperties', 'inheritedProperties'];
 
@@ -316,19 +318,23 @@
     return null;
   }
 
-  /** Categories may be comma/space separated; other props are exact (case-insensitive). */
-  function propertyMatches(rawValue, wantedValues, multiToken) {
+  /**
+   * Match device property to selected filter values.
+   * Categories (and other multi-token props) are comma-delimited like FilterWidget.
+   */
+  function propertyMatches(rawValue, wantedValues, useCommaSplit) {
     if (rawValue == null) return false;
     const raw = String(rawValue);
-    const wanted = wantedValues.map(function (w) { return String(w).toLowerCase(); });
-    if (multiToken) {
-      const tokens = raw.split(/[,;\s]+/).map(function (t) { return t.trim().toLowerCase(); }).filter(Boolean);
+    const wanted = wantedValues.map(function (w) { return String(w).trim().toLowerCase(); }).filter(Boolean);
+    if (!wanted.length) return true;
+    if (useCommaSplit) {
+      const tokens = raw.split(',').map(function (t) { return t.trim().toLowerCase(); }).filter(Boolean);
       return wanted.some(function (w) {
-        return tokens.indexOf(w) >= 0 || raw.toLowerCase().indexOf(w) >= 0;
+        return tokens.indexOf(w) >= 0 || tokens.some(function (t) { return t.indexOf(w) >= 0; });
       });
     }
-    const lower = raw.toLowerCase();
-    return wanted.some(function (w) { return lower === w || lower.indexOf(w) >= 0; });
+    const lower = raw.toLowerCase().trim();
+    return wanted.some(function (w) { return lower === w; });
   }
 
   function deviceMatchesMetaFilters(device, activeMeta) {
@@ -337,7 +343,7 @@
       const vals = activeMeta[p.n];
       if (!vals || !vals.length) continue;
       const raw = getDevicePropertyValue(device, p.n);
-      if (!propertyMatches(raw, vals, p.multi)) return false;
+      if (!propertyMatches(raw, vals, !!p.contains)) return false;
     }
     return true;
   }
@@ -347,25 +353,9 @@
       const raw = sessionStorage.getItem(DEVICE_CACHE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && parsed.ts && (Date.now() - parsed.ts) < DEVICE_CACHE_TTL_MS && Array.isArray(parsed.devices) && parsed.devices.length) {
+        if (parsed && parsed.ts && (Date.now() - parsed.ts) < DEVICE_CACHE_TTL_MS &&
+            Array.isArray(parsed.devices) && parsed.devices.length) {
           return parsed.devices;
-        }
-      }
-    } catch (e) { /* ignore */ }
-    // Optional reuse of FilterWidget localStorage cache shapes if present
-    try {
-      const fw = localStorage.getItem('filterWidgetV7APICache');
-      if (fw) {
-        const parsed = JSON.parse(fw);
-        // Heuristic: look for a cached /device/devices payload with items
-        if (parsed && typeof parsed === 'object') {
-          const keys = Object.keys(parsed);
-          for (let i = 0; i < keys.length; i++) {
-            const entry = parsed[keys[i]];
-            const data = entry && (entry.data || entry);
-            const items = extractItems(data);
-            if (items.length > 50) return items; // partial reuse only if substantial
-          }
         }
       }
     } catch (e) { /* ignore */ }
@@ -391,16 +381,45 @@
     } catch (e) { /* quota */ }
   }
 
-  /** Fetch all device pages with bounded concurrency (no property filter on API). */
-  async function fetchAllDevices(signal) {
-    const cached = readDeviceCache();
-    if (cached) {
-      debugLog('Using device cache', { count: cached.length });
-      return cached;
-    }
+  /**
+   * Build LM advanced property filter clauses (documented REST advanced filters).
+   * - Skip All/empty
+   * - Categories use contains (~) with *value* so multi-value system.categories match
+   * - Do NOT wrap a single clause in () — LM returns invalid filter! for that form
+   */
+  function propFilterClause(propName, values, systemProp, useContains) {
+    const parts = [];
+    values.forEach(function (v) {
+      const clean = stripGlob(v).trim();
+      if (!isActiveFilterValue(clean)) return;
+      const key = systemProp ? 'systemProperties' : 'customProperties';
+      const op = useContains ? '~' : ':';
+      const value = useContains ? ('*' + clean.replace(/\*/g, '') + '*') : clean;
+      const obj = JSON.stringify({ name: propName, value: value }).replace(/"/g, '\\"');
+      parts.push(key + op + '"' + obj + '"');
+    });
+    return parts;
+  }
 
+  /** Combine active meta filters into one device API filter expression (or '' if none). */
+  function buildDeviceMetaFilter(activeMeta) {
+    const andParts = [];
+    META_PROPS.forEach(function (p) {
+      const vals = activeMeta[p.n];
+      if (!vals || !vals.length) return;
+      const pcs = propFilterClause(p.n, vals, p.system, p.contains);
+      if (!pcs.length) return;
+      // OR within same property; AND across properties (comma). Avoid outer () on single clause.
+      andParts.push(pcs.length === 1 ? pcs[0] : '(' + pcs.join(' || ') + ')');
+    });
+    return andParts.join(',');
+  }
+
+  /** Paginate /device/devices with optional filter; bounded concurrency after page 0. */
+  async function fetchDevicesPages(filterExpr, signal) {
     const fields = 'id,name,displayName,systemProperties,autoProperties,customProperties,inheritedProperties';
-    const firstQ = '/device/devices?size=' + PAGE_SIZE + '&offset=0&fields=' + fields;
+    const filterQs = filterExpr ? '&filter=' + encodeURIComponent(filterExpr) : '';
+    const firstQ = '/device/devices?size=' + PAGE_SIZE + '&offset=0&fields=' + fields + filterQs;
     const firstData = await lmGet(firstQ, signal);
     const firstItems = extractItems(firstData);
     const total = extractTotal(firstData, firstItems);
@@ -409,11 +428,9 @@
     const totalPages = Math.ceil(Math.min(total, MAX_OFFSET) / PAGE_SIZE);
     if (totalPages > 1 && firstItems.length >= PAGE_SIZE) {
       const offsets = [];
-      for (let page = 1; page < totalPages; page++) {
-        offsets.push(page * PAGE_SIZE);
-      }
+      for (let page = 1; page < totalPages; page++) offsets.push(page * PAGE_SIZE);
       const pages = await mapPool(offsets, CONCURRENCY, async function (offset) {
-        const q = '/device/devices?size=' + PAGE_SIZE + '&offset=' + offset + '&fields=' + fields;
+        const q = '/device/devices?size=' + PAGE_SIZE + '&offset=' + offset + '&fields=' + fields + filterQs;
         const data = await lmGet(q, signal);
         return extractItems(data);
       });
@@ -421,14 +438,24 @@
         for (let i = 0; i < items.length; i++) devices.push(items[i]);
       });
     }
+    return devices;
+  }
 
+  async function fetchAllDevicesUnfiltered(signal) {
+    const cached = readDeviceCache();
+    if (cached) {
+      debugLog('Using device cache', { count: cached.length });
+      return cached;
+    }
+    const devices = await fetchDevicesPages('', signal);
     writeDeviceCache(devices);
     return devices;
   }
 
   /**
-   * Resolve device names for metadata filters via client-side property matching.
-   * Does NOT build systemProperties:"{json}" API filters (invalid on LM).
+   * Resolve device names for metadata filters via portal /device/devices when possible.
+   * Falls back to client-side property matching if the advanced filter is rejected (400)
+   * or returns nothing useful.
    */
   async function resolveDeviceNames(urlFilters, signal) {
     const byProp = buildActiveUrlFilters(urlFilters);
@@ -452,28 +479,53 @@
     }
 
     const t0 = Date.now();
-    let devices;
+    const deviceFilter = buildDeviceMetaFilter(activeMeta);
+    debugLog('Device meta filter expression', deviceFilter || '(none)');
+
+    let devices = [];
+    let usedClientSide = false;
+
     try {
-      devices = await fetchAllDevices(signal);
+      devices = await fetchDevicesPages(deviceFilter, signal);
+      // Exact-match API filters can miss multi-token categories; if empty, try client-side
+      if (!devices.length && deviceFilter) {
+        debugLog('API filter returned 0 devices — falling back to client-side match');
+        usedClientSide = true;
+        const all = await fetchAllDevicesUnfiltered(signal);
+        devices = all.filter(function (d) { return deviceMatchesMetaFilters(d, activeMeta); });
+      }
     } catch (err) {
       if (err && err.name === 'AbortError') throw err;
-      // If only display names were needed we already returned; meta requires devices.
-      // Fall back: if we have display names only path failed — surface friendly error.
-      debugLog('Device fetch failed', err && err.message);
-      throw new Error('Unable to resolve resources for the selected filters. Please try again.');
+      // Original Aruba bug: invalid advanced filter → 400. Fall back instead of failing the widget.
+      if (err && (err.status === 400 || (err.detail && /invalid filter/i.test(err.detail)))) {
+        debugLog('API filter rejected — client-side fallback', err.detail || err.message);
+        usedClientSide = true;
+        try {
+          const all = await fetchAllDevicesUnfiltered(signal);
+          devices = all.filter(function (d) { return deviceMatchesMetaFilters(d, activeMeta); });
+        } catch (err2) {
+          if (err2 && err2.name === 'AbortError') throw err2;
+          debugLog('Client-side device fetch failed', err2 && err2.message);
+          throw new Error('Unable to resolve resources for the selected filters. Please try again.');
+        }
+      } else {
+        debugLog('Device fetch failed', err && err.message);
+        throw new Error('Unable to resolve resources for the selected filters. Please try again.');
+      }
     }
 
-    const matched = devices.filter(function (d) {
-      return deviceMatchesMetaFilters(d, activeMeta);
-    });
+    // Always verify client-side for contains/categories so *partial* API matches stay accurate
+    if (!usedClientSide && hasMeta) {
+      devices = devices.filter(function (d) { return deviceMatchesMetaFilters(d, activeMeta); });
+    }
+
     metrics.filterMs += Date.now() - t0;
 
     let names = [];
-    matched.forEach(function (d) {
+    devices.forEach(function (d) {
       if (d.displayName) names.push(d.displayName);
       if (d.name && d.name !== d.displayName) names.push(d.name);
     });
-    // unique
     names = Array.from(new Set(names));
 
     if (displayNames.length) {
@@ -483,7 +535,9 @@
 
     debugLog('resolveDeviceNames', {
       meta: activeMeta,
-      matchedDevices: matched.length,
+      deviceFilter: deviceFilter,
+      usedClientSide: usedClientSide,
+      matchedDevices: devices.length,
       names: names.length
     });
 
